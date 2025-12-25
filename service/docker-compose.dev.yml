@@ -27,13 +27,18 @@ services:
       - "52010:52010"
     volumes:
       - object-store-data:/app/data
-      - ./object-storage-config.toml:/app/config/config.toml:ro
     environment:
       RUST_LOG: info
       AWS_ACCESS_KEY_ID: ${OBJECT_STORAGE_AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${OBJECT_STORAGE_AWS_SECRET_ACCESS_KEY}
       AWS_REGION: ${OBJECT_STORAGE_AWS_REGION}
-      CONFIG_PATH: /app/config/config.toml
+      
+      OBJECT_STORE__SERVER__HOST: 0.0.0.0
+      OBJECT_STORE__SERVER__PORT: 52010
+      OBJECT_STORE__BACKEND__TYPE: s3
+      OBJECT_STORE__BACKEND__REGION: ${OBJECT_STORAGE_AWS_REGION}
+      OBJECT_STORE__BACKEND__PHYSICAL_BUCKET: ${OBJECT_STORAGE_AWS_S3_BUCKET}
+
     container_name: forge-object-storage
     restart: unless-stopped
     networks:

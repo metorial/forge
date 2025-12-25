@@ -1,45 +1,25 @@
 {
-  "name": "forge",
-  "module": "index.ts",
-  "type": "module",
+  "name": "@metorial/forge-root",
   "private": true,
   "scripts": {
-    "start": "bun ./src/server.ts",
-    "dev": "docker compose -f ./docker-compose.dev.yml up --pull always --build forge object-storage"
+    "dev": "cd ./service && bun dev"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "prettier": "^3.5.3",
+    "turbo": "^2.5.5",
+    "typescript": "5.8.2"
   },
-  "peerDependencies": {
-    "typescript": "^5"
+  "engines": {
+    "node": ">=18",
+    "bun": ">=1.2.15"
   },
+  "packageManager": "bun@1.2.15",
+  "workspaces": [
+    "service",
+    "packages/*",
+    "clients/*"
+  ],
   "dependencies": {
-    "@aws-sdk/client-cloudwatch-logs": "^3.957.0",
-    "@aws-sdk/client-codebuild": "^3.957.0",
-    "@aws-sdk/client-iam": "^3.957.0",
-    "@lowerdeck/cron": "^1.0.4",
-    "@lowerdeck/encryption": "^1.0.6",
-    "@lowerdeck/env": "^1.0.4",
-    "@lowerdeck/error": "^1.0.8",
-    "@lowerdeck/hash": "^1.0.4",
-    "@lowerdeck/id": "^1.0.5",
-    "@lowerdeck/once": "^1.0.4",
-    "@lowerdeck/pagination": "^1.0.4",
-    "@lowerdeck/queue": "^1.0.4",
-    "@lowerdeck/rpc-client": "^1.0.2",
-    "@lowerdeck/rpc-server": "^1.0.4",
-    "@lowerdeck/service": "^1.0.3",
-    "@lowerdeck/slugify": "^1.0.4",
-    "@lowerdeck/validation": "^1.0.4",
-    "@prisma/adapter-pg": "^7.2.0",
-    "@prisma/client": "^7.2.0",
-    "@types/mongoose": "^5.11.97",
-    "date-fns": "^4.1.0",
-    "jszip": "^3.10.1",
-    "mongoose": "^9.0.2",
-    "object-storage-client": "^0.2.3",
-    "prisma": "^7.2.0",
-    "snowflake-uuid": "^1.0.0",
-    "yaml": "^2.8.2"
+    "npm-run-all": "^4.1.5"
   }
 }
