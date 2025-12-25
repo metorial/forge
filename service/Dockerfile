@@ -67,7 +67,7 @@ EXPOSE 52020
 
 # Health check using curl
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:52020/health || exit 1
+    CMD curl -f http://localhost:52020/ping || exit 1
 
 # Start command: push schema and start service
 CMD ["sh", "-c", "bun prisma db push && bun src/server.ts"]
