@@ -14,7 +14,7 @@ import { workflowArtifactService } from './workflowArtifact';
 let include = {
   workflow: true,
   version: true,
-  steps: { include: { step: true } },
+  steps: { include: { step: { include: { artifactToDownload: true } } } },
   artifacts: true
 };
 
@@ -76,15 +76,17 @@ class workflowRunServiceImpl {
               index: index++
             },
 
-            ...currentVersion.steps.map(s => ({
-              oid: snowflake.nextId(),
-              id: ID.generateIdSync('workflowRunStep'),
-              name: `Step: ${s.name} (setup)`,
-              type: 'init' as const,
-              status: 'pending' as const,
-              index: index++,
-              stepOid: s.oid
-            })),
+            ...currentVersion.steps
+              .filter(s => s.type == 'script' && s.initScript.length)
+              .map(s => ({
+                oid: snowflake.nextId(),
+                id: ID.generateIdSync('workflowRunStep'),
+                name: `Step: ${s.name} (setup)`,
+                type: 'init' as const,
+                status: 'pending' as const,
+                index: index++,
+                stepOid: s.oid
+              })),
 
             ...currentVersion.steps.map(s => ({
               oid: snowflake.nextId(),
@@ -96,15 +98,17 @@ class workflowRunServiceImpl {
               stepOid: s.oid
             })),
 
-            ...currentVersion.steps.map(s => ({
-              oid: snowflake.nextId(),
-              id: ID.generateIdSync('workflowRunStep'),
-              name: `Step: ${s.name} (cleanup)`,
-              type: 'cleanup' as const,
-              status: 'pending' as const,
-              index: index++,
-              stepOid: s.oid
-            })),
+            ...currentVersion.steps
+              .filter(s => s.type == 'script' && s.cleanupScript.length)
+              .map(s => ({
+                oid: snowflake.nextId(),
+                id: ID.generateIdSync('workflowRunStep'),
+                name: `Step: ${s.name} (cleanup)`,
+                type: 'cleanup' as const,
+                status: 'pending' as const,
+                index: index++,
+                stepOid: s.oid
+              })),
 
             {
               oid: snowflake.nextId(),
@@ -165,7 +169,7 @@ class workflowRunServiceImpl {
   async getWorkflowRunOutput(d: { run: WorkflowRun }) {
     let steps = await db.workflowRunStep.findMany({
       where: { runOid: d.run.oid },
-      include: { step: true },
+      include: { step: { include: { artifactToDownload: true } } },
       orderBy: { index: 'asc' }
     });
 

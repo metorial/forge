@@ -6,6 +6,7 @@ import { db } from '../../db';
 import { encryption } from '../../encrypption';
 import { env } from '../../env';
 import { snowflake } from '../../id';
+import { workflowArtifactService } from '../../services';
 import { storage } from '../../storage';
 import { BuildContext } from '../_lib/buildContext';
 import { codebuild, logsClient } from './codeBuild';
@@ -62,6 +63,8 @@ let startBuildQueueProcessor = startAwsCodeBuildQueue.process(async data => {
     encrypted: ctx.run.encryptedEnvironmentVariables
   });
 
+  let artifactData: Record<string, { bucket: string; storageKey: string }> = {};
+
   let startBuildResp = await codebuild.send(
     new StartBuildCommand({
       projectName: project.projectName,
@@ -91,10 +94,11 @@ let startBuildQueueProcessor = startAwsCodeBuildQueue.process(async data => {
               'echo "Started build on Metorial Forge (runner: AWS/1) ..."',
               'echo "Setting up build environment ..."',
 
-              'apt-get update && apt-get install -y unzip curl',
+              'apt-get update && apt-get install -y zip unzip curl',
 
               'mkdir -p ./forge',
               'cd ./forge',
+              'mkdir -p ./output',
 
               logSystem({ type: 'download-artifacts.start' }),
               `echo "Downloading initial files ..."`,
@@ -126,25 +130,77 @@ let startBuildQueueProcessor = startAwsCodeBuildQueue.process(async data => {
 
               ...initSteps.flatMap(step => [
                 logSystem({ type: 'step.start', stepId: step.id }),
-                ...step.step!.initScript,
+                ...(step.step?.initScript ?? ['echo "No action"']),
                 logSystem({ type: 'step.end', stepId: step.id })
               ]),
 
-              ...actionSteps.flatMap(step => [
-                logSystem({ type: 'step.start', stepId: step.id }),
-                ...step.step!.actionScript,
-                logSystem({ type: 'step.end', stepId: step.id })
-              ]),
+              ...(
+                await Promise.all(
+                  actionSteps.flatMap(async step => {
+                    let inner: string[] = [];
+
+                    if (step.step?.type == 'script') {
+                      inner = step.step?.actionScript ?? ['echo "No action"'];
+                    } else if (step.step?.type == 'download_artifact') {
+                      let artifact = await db.workflowArtifact.findFirstOrThrow({
+                        where: {
+                          oid: step.step.artifactToDownloadOid!,
+                          workflowOid: ctx.run.workflowOid
+                        }
+                      });
+                      let res = await storage.getPublicURL(
+                        artifact.bucket,
+                        artifact.storageKey,
+                        60 * 60 * 6
+                      );
+
+                      inner = [
+                        `echo "Downloading artifact ${artifact.name} ..."`,
+                        `curl -sL ${shellEscape(res.url)} -o /tmp/artifact_${artifact.oid}`,
+                        `mv /tmp/artifact_${artifact.oid} ${shellEscape(step.step.artifactToDownloadPath!)}`,
+                        `echo "Download complete."`
+                      ];
+                    } else if (step.step?.type == 'upload_artifact') {
+                      let uploadInfo =
+                        await workflowArtifactService.putArtifactFromBuilderStart({
+                          run: ctx.run,
+                          expirationSecs: 60 * 60 * 6
+                        });
+
+                      artifactData[step.id] = {
+                        bucket: uploadInfo.bucket,
+                        storageKey: uploadInfo.storageKey
+                      };
+
+                      inner = [
+                        `echo "Uploading artifact ${step.step.artifactToUploadName!} from ${step.step.artifactToUploadPath!} ..."`,
+                        `curl -X PUT ${shellEscape(uploadInfo.uploadUrl)} -H "Content-Type: application/octet-stream" --data-binary @${shellEscape(step.step.artifactToUploadPath!)} `,
+                        `echo "Upload complete."`,
+                        logSystem({
+                          type: 'upload-artifact.register',
+                          stepId: step.id
+                        })
+                      ];
+                    }
+
+                    return [
+                      logSystem({ type: 'step.start', stepId: step.id }),
+                      ...inner,
+                      logSystem({ type: 'step.end', stepId: step.id })
+                    ];
+                  })
+                )
+              ).flat(),
 
               ...cleanupSteps.flatMap(step => [
                 logSystem({ type: 'step.start', stepId: step.id }),
-                ...step.step!.cleanupScript,
+                ...(step.step?.cleanupScript ?? ['echo "No action"']),
                 logSystem({ type: 'step.end', stepId: step.id })
               ]),
 
               logSystem({ type: 'step.start', stepId: teardownStep.id }),
               'echo "Tearing down build environment ..."',
-              'echo "Build complete ... thanks for using Metorial Forge!"',
+              'echo "Build complete ... powered by Metorial Forge (AWS/1)."',
               logSystem({ type: 'step.end', stepId: teardownStep.id }),
 
               logSystem({ type: 'build.end' })
@@ -158,7 +214,8 @@ let startBuildQueueProcessor = startAwsCodeBuildQueue.process(async data => {
   await waitForBuildQueue.add({
     runId: ctx.run.id,
     buildId: startBuildResp.build?.id!,
-    attemptNo: 1
+    attemptNo: 1,
+    artifactData
   });
 });
 
@@ -166,6 +223,14 @@ let waitForBuildQueue = createQueue<{
   runId: string;
   buildId: string;
   attemptNo: number;
+
+  artifactData: Record<
+    string,
+    {
+      bucket: string;
+      storageKey: string;
+    }
+  >;
 }>({
   redisUrl: env.service.REDIS_URL,
   name: 'forge/aws-cbld/wait'
@@ -216,6 +281,14 @@ let startedBuildQueue = createQueue<{
   runId: string;
   buildId: string;
   cloudwatch: { groupName: string; streamName: string };
+
+  artifactData: Record<
+    string,
+    {
+      bucket: string;
+      storageKey: string;
+    }
+  >;
 }>({
   redisUrl: env.service.REDIS_URL,
   name: 'forge/aws-cbld/started'
@@ -251,6 +324,14 @@ let monitorBuildOutputQueue = createQueue<{
   buildEnded?: boolean;
 
   currentStepOid?: bigint;
+
+  artifactData: Record<
+    string,
+    {
+      bucket: string;
+      storageKey: string;
+    }
+  >;
 }>({
   redisUrl: env.service.REDIS_URL,
   name: 'forge/aws-cbld/mopt'
@@ -322,6 +403,24 @@ let monitorBuildOutputQueueProcessor = monitorBuildOutputQueue.process(async dat
           }
         });
         if (currentStepOid === step.oid) currentStepOid = undefined;
+      } else if (systemLog.type === 'upload-artifact.register') {
+        let step = await db.workflowRunStep.findFirst({
+          where: {
+            id: systemLog.stepId,
+            runOid: data.runOid
+          },
+          include: { step: true, run: true }
+        });
+        let artifactData = step ? data.artifactData[step.id] : null;
+
+        if (artifactData && step?.step?.type === 'upload_artifact') {
+          await workflowArtifactService.putArtifactFromBuilderFinish({
+            run: step.run,
+            name: step.step.artifactToUploadName!,
+            type: 'output',
+            artifactData
+          });
+        }
       }
     } else if (buildStarted && !buildEnded && currentStepOid) {
       let string = collectedMessages.get(currentStepOid) || '';
