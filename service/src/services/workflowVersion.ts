@@ -7,15 +7,28 @@ import { db } from '../db';
 import { ID, snowflake } from '../id';
 import { providerService } from './provider';
 
-export type WorkflowVersionSteps = {
-  name: string;
-  type: 'script';
-  initScript: string[];
-  actionScript: string[];
-  cleanupScript: string[];
-};
+export type WorkflowVersionSteps =
+  | {
+      name: string;
+      type: 'script';
+      initScript?: string[];
+      actionScript: string[];
+      cleanupScript?: string[];
+    }
+  | {
+      name: string;
+      type: 'download_artifact';
+      artifactId: string;
+      artifactDestinationPath: string;
+    }
+  | {
+      name: string;
+      type: 'upload_artifact';
+      artifactSourcePath: string;
+      artifactName: string;
+    };
 
-let include = { steps: true, workflow: true };
+let include = { steps: { include: { artifactToDownload: true } }, workflow: true };
 
 class workflowVersionServiceImpl {
   async createWorkflowVersion(d: {
@@ -42,19 +55,48 @@ class workflowVersionServiceImpl {
           providerOid: (await providerService.getDefaultProvider()).oid,
 
           steps: {
-            create: d.input.steps.map((s, index) => ({
-              oid: snowflake.nextId(),
-              id: ID.generateIdSync('workflowVersionStep'),
+            create: await Promise.all(
+              d.input.steps.map(async (s, index) => {
+                let artifact =
+                  s.type === 'download_artifact'
+                    ? await (async () => {
+                        let artifact = await db.workflowArtifact.findFirst({
+                          where: {
+                            id: s.artifactId,
+                            workflowOid: d.workflow.oid
+                          }
+                        });
+                        if (!artifact)
+                          throw new ServiceError(notFoundError('workflow.artifact'));
 
-              name: s.name,
-              type: s.type,
+                        return artifact;
+                      })()
+                    : null;
 
-              index,
+                return {
+                  oid: snowflake.nextId(),
+                  id: ID.generateIdSync('workflowVersionStep'),
 
-              initScript: s.initScript,
-              actionScript: s.actionScript,
-              cleanupScript: s.cleanupScript
-            }))
+                  name: s.name,
+                  type: s.type,
+
+                  index,
+
+                  artifactToDownloadOid: artifact?.oid,
+                  artifactToDownloadPath:
+                    s.type === 'download_artifact' ? s.artifactDestinationPath : undefined,
+
+                  artifactToUploadPath:
+                    s.type === 'upload_artifact' ? s.artifactSourcePath : undefined,
+                  artifactToUploadName:
+                    s.type === 'upload_artifact' ? s.artifactName : undefined,
+
+                  actionScript: 'actionScript' in s ? s.actionScript : [],
+                  initScript: 'initScript' in s && s.initScript ? s.initScript : [],
+                  cleanupScript: 'cleanupScript' in s && s.cleanupScript ? s.cleanupScript : []
+                };
+              })
+            )
           }
         },
         include

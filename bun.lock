@@ -51,7 +51,7 @@
         "date-fns": "^4.1.0",
         "jszip": "^3.10.1",
         "mongoose": "^9.0.2",
-        "object-storage-client": "^0.2.3",
+        "object-storage-client": "^0.2.5",
         "prisma": "^7.2.0",
         "snowflake-uuid": "^1.0.0",
         "yaml": "^2.8.2",
@@ -1283,7 +1283,7 @@
 
     "object-keys": ["object-keys@1.1.1", "", {}, "sha512-NuAESUOUMrlIXOfHKzD6bpPu3tYt3xvjNdRIQ+FeT0lNb4K8WR70CaDxhuNguS2XG+GjkyMwOzsN5ZktImfhLA=="],
 
-    "object-storage-client": ["object-storage-client@0.2.3", "", { "dependencies": { "axios": "^1.6.0" } }, "sha512-75cnUhPTgS6BAhW5LdimO1b/yLTIkIr+nkKRy+ZGwyL2E1b+zvXnkEnOQcGwHzB4KIC6kqgqx8hShn7dBggBfA=="],
+    "object-storage-client": ["object-storage-client@0.2.5", "", { "dependencies": { "axios": "^1.6.0" } }, "sha512-YlCCmPjqvySjmVE0vPaS4dVYeYwNwKI70jx0xcbCBIzdvo9E91U6vaNzRUlWyTB+k9H/XFzZUqtGO4+X/L19ew=="],
 
     "object.assign": ["object.assign@4.1.7", "", { "dependencies": { "call-bind": "^1.0.8", "call-bound": "^1.0.3", "define-properties": "^1.2.1", "es-object-atoms": "^1.0.0", "has-symbols": "^1.1.0", "object-keys": "^1.1.1" } }, "sha512-nK28WOo+QIjBkDduTINE4JkF/UJJKyf2EJxvJKfblDpyg0Q+pkOHNTL0Qwy6NP6FhE/EnzV73BxxqcJaXY9anw=="],
 

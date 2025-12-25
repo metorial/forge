@@ -28,13 +28,27 @@ export let workflowVersionController = app.controller({
         name: v.string(),
 
         steps: v.array(
-          v.object({
-            name: v.string(),
-            type: v.enumOf(['script']),
-            initScript: v.optional(v.array(v.string())),
-            actionScript: v.array(v.string()),
-            cleanupScript: v.optional(v.array(v.string()))
-          })
+          v.union([
+            v.object({
+              name: v.string(),
+              type: v.literal('script'),
+              initScript: v.optional(v.array(v.string())),
+              actionScript: v.array(v.string()),
+              cleanupScript: v.optional(v.array(v.string()))
+            }),
+            v.object({
+              name: v.string(),
+              type: v.literal('download_artifact'),
+              artifactId: v.string(),
+              artifactDestinationPath: v.string()
+            }),
+            v.object({
+              name: v.string(),
+              type: v.literal('upload_artifact'),
+              artifactSourcePath: v.string(),
+              artifactName: v.string()
+            })
+          ])
         )
       })
     )
@@ -43,11 +57,7 @@ export let workflowVersionController = app.controller({
         workflow: ctx.workflow,
         input: {
           name: ctx.input.name,
-          steps: ctx.input.steps.map(s => ({
-            ...s,
-            initScript: s.initScript ?? [],
-            cleanupScript: s.cleanupScript ?? []
-          }))
+          steps: ctx.input.steps
         }
       });
       return workflowVersionPresenter(version);

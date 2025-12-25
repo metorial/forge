@@ -98,6 +98,8 @@ model WorkflowVersion {
 
 enum WorkflowVersionStepType {
   script
+  upload_artifact
+  download_artifact
 }
 
 model WorkflowVersionStep {
@@ -111,6 +113,13 @@ model WorkflowVersionStep {
 
   workflowVersionOid BigInt
   workflowVersion    WorkflowVersion @relation(fields: [workflowVersionOid], references: [oid], onDelete: Cascade)
+
+  artifactToDownloadOid  BigInt?
+  artifactToDownload     WorkflowArtifact? @relation("DownloadArtifact", fields: [artifactToDownloadOid], references: [oid])
+  artifactToDownloadPath String?
+
+  artifactToUploadPath String?
+  artifactToUploadName String?
 
   initScript    String[]
   actionScript  String[]
@@ -143,6 +152,8 @@ model WorkflowArtifact {
   run    WorkflowRun @relation(fields: [runOid], references: [oid])
 
   createdAt DateTime @default(now())
+
+  workflowVersionSteps WorkflowVersionStep[] @relation("DownloadArtifact")
 }
 
 enum WorkflowRunStatus {
