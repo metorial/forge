@@ -31,6 +31,7 @@
         "@aws-sdk/client-cloudwatch-logs": "^3.957.0",
         "@aws-sdk/client-codebuild": "^3.957.0",
         "@aws-sdk/client-iam": "^3.957.0",
+        "@lowerdeck/api-mux": "^1.0.1",
         "@lowerdeck/cron": "^1.0.4",
         "@lowerdeck/encryption": "^1.0.6",
         "@lowerdeck/env": "^1.0.4",
@@ -412,6 +413,8 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
+    "@lowerdeck/api-mux": ["@lowerdeck/api-mux@1.0.1", "", { "dependencies": { "@lowerdeck/error": "^1.0.8" } }, "sha512-yq1w9htHNuyaR04Vb9lP+3TyCWwYqa6NqPBnxXtkAxmwdRpy5KilnjQ65N3ZkjjqFavSTkyYRkss3BOVSRR/zw=="],
 
     "@lowerdeck/base62": ["@lowerdeck/base62@1.0.4", "", { "dependencies": { "base-x": "^5.0.0" } }, "sha512-PIx4GWbQWWCz7YigmAFD0M6I3ydJ97dgqNCzpHG+bt1tFGv2+Kb8t0vsY/cdoH55lG5A019wHglUnxLqmme5Cw=="],
 
