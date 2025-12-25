@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: forge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: forge
+      POSTGRES_PASSWORD: forge
+      POSTGRES_DB: forge
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - forge-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: forge-redis
+    restart: unless-stopped
+    networks:
+      - forge-network
+
+  object-storage:
+    image: ghcr.io/metorial/object-storage:latest
+    ports:
+      - "52010:52010"
+    volumes:
+      - object-store-data:/app/data
+      - ./object-storage-config.toml:/app/config/config.toml:ro
+    environment:
+      RUST_LOG: info
+      AWS_ACCESS_KEY_ID: ${OBJECT_STORAGE_AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${OBJECT_STORAGE_AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${OBJECT_STORAGE_AWS_REGION}
+      CONFIG_PATH: /app/config/config.toml
+    container_name: forge-object-storage
+    restart: unless-stopped
+    networks:
+      - forge-network
+
+  forge:  
+    build:
+      context: .
+      dockerfile: dev.Dockerfile
+    container_name: forge-service
+    restart: unless-stopped
+    ports:
+      - "52020:52020"
+    environment:
+      DATABASE_URL: postgresql://forge:forge@postgres:5432/forge
+      REDIS_URL: redis://redis:6379/0
+      
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      DEFAULT_PROVIDER: ${DEFAULT_PROVIDER}
+
+      OBJECT_STORAGE_URL: http://object-storage:52010
+      LOG_BUCKET_NAME: logs
+      ARTIFACT_BUCKET_NAME: artifacts
+
+      CODE_BUILD_AWS_REGION: ${CODE_BUILD_AWS_REGION:-}
+      CODE_BUILD_AWS_ACCESS_KEY_ID: ${CODE_BUILD_AWS_ACCESS_KEY_ID:-}
+      CODE_BUILD_AWS_SECRET_ACCESS_KEY: ${CODE_BUILD_AWS_SECRET_ACCESS_KEY:-}
+      CODE_BUILD_PROJECT_NAME: ${CODE_BUILD_PROJECT_NAME:-}
+      CODE_BUILD_ROLE_ARN: ${CODE_BUILD_ROLE_ARN:-}
+
+    volumes:
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+    depends_on:
+      - postgres
+      - redis
+      - object-storage
+    networks:
+      - forge-network
+
+volumes:
+  postgres_data:
+    driver: local
+  object-store-data:
+    driver: local
+
+networks:
+  forge-network:
+    driver: bridge
