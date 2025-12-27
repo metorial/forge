@@ -6,24 +6,24 @@ import type {
 } from '../../prisma/generated/client';
 
 export let workflowVersionPresenter = (
-  artifact: WorkflowVersion & {
+  version: WorkflowVersion & {
     steps: (WorkflowVersionStep & {
       artifactToDownload: WorkflowArtifact | null;
     })[];
     workflow: Workflow;
   }
 ) => ({
-  object: 'workflow.run',
+  object: 'workflow.version',
 
-  id: artifact.id,
-  identifier: artifact.identifier,
-  name: artifact.name,
+  id: version.id,
+  identifier: version.identifier,
+  name: version.name,
 
-  workflowId: artifact.workflow.id,
+  workflowId: version.workflow.id,
 
-  steps: artifact.steps.sort((a, b) => a.index - b.index).map(workflowVersionStepPresenter),
+  steps: version.steps.sort((a, b) => a.index - b.index).map(workflowVersionStepPresenter),
 
-  createdAt: artifact.createdAt
+  createdAt: version.createdAt
 });
 
 export let workflowVersionStepPresenter = (
@@ -31,7 +31,7 @@ export let workflowVersionStepPresenter = (
     artifactToDownload: WorkflowArtifact | null;
   }
 ) => ({
-  object: 'workflow.run.step',
+  object: 'workflow.version.step',
 
   id: step.id,
   type: step.type,
