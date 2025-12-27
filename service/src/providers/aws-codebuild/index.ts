@@ -543,6 +543,11 @@ let storeOutputCleanupQueueProcessor = storeOutputCleanupQueue.process(async dat
   await db.workflowRunOutputTemp.deleteMany({
     where: { runOid: data.runOid }
   });
+
+  await db.workflowRun.updateMany({
+    where: { oid: data.runOid },
+    data: { encryptedEnvironmentVariables: '' }
+  });
 });
 
 export let awsCodeBuildProcessors = combineQueueProcessors([

@@ -9,7 +9,7 @@ import { once } from '@lowerdeck/once';
 import { env } from '../../env';
 
 let iam =
-  env.provider.DEFAULT_PROVIDER == 'aws-code-build'
+  env.provider.DEFAULT_PROVIDER == 'aws.code-build'
     ? new IAMClient({
         region: env.codeBuild.CODE_BUILD_AWS_REGION,
         credentials:

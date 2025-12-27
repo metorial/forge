@@ -26,7 +26,7 @@ docker run -d \
   -e DATABASE_URL=postgresql://user:pass@host:5432/forge \
   -e REDIS_URL=redis://host:6379/0 \
   -e ENCRYPTION_KEY=your-32-char-encryption-key \
-  -e DEFAULT_PROVIDER=aws-codebuild \
+  -e DEFAULT_PROVIDER=aws.code-build \
   -e OBJECT_STORAGE_URL=http://object-storage:52010 \
   -e LOG_BUCKET_NAME=logs \
   -e ARTIFACT_BUCKET_NAME=artifacts \
@@ -80,7 +80,7 @@ services:
       REDIS_URL: redis://redis:6379/0
 
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      DEFAULT_PROVIDER: aws-codebuild
+      DEFAULT_PROVIDER: aws.code-build
 
       OBJECT_STORAGE_URL: http://object-storage:52010
       LOG_BUCKET_NAME: logs
