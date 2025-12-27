@@ -3,7 +3,7 @@ import { CodeBuildClient } from '@aws-sdk/client-codebuild';
 import { env } from '../../env';
 
 export let codebuild =
-  env.provider.DEFAULT_PROVIDER == 'aws-code-build'
+  env.provider.DEFAULT_PROVIDER == 'aws.code-build'
     ? new CodeBuildClient({
         region: env.codeBuild.CODE_BUILD_AWS_REGION,
         credentials:
@@ -18,7 +18,7 @@ export let codebuild =
     : undefined;
 
 export let logsClient =
-  env.provider.DEFAULT_PROVIDER == 'aws-code-build'
+  env.provider.DEFAULT_PROVIDER == 'aws.code-build'
     ? new CloudWatchLogsClient({
         region: env.codeBuild.CODE_BUILD_AWS_REGION,
         credentials:
