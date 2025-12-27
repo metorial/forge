@@ -3,7 +3,7 @@ import { BatchGetBuildsCommand, StartBuildCommand } from '@aws-sdk/client-codebu
 import { combineQueueProcessors, createQueue } from '@lowerdeck/queue';
 import { stringify } from 'yaml';
 import { db } from '../../db';
-import { encryption } from '../../encrypption';
+import { encryption } from '../../encryption';
 import { env } from '../../env';
 import { snowflake } from '../../id';
 import { workflowArtifactService } from '../../services';

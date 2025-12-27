@@ -3,7 +3,7 @@ import { Paginator } from '@lowerdeck/pagination';
 import { Service } from '@lowerdeck/service';
 import type { Workflow, WorkflowRun } from '../../prisma/generated/client';
 import { db } from '../db';
-import { encryption } from '../encrypption';
+import { encryption } from '../encryption';
 import { ID, snowflake } from '../id';
 import { createZipFromFiles } from '../lib/zip';
 import { startAwsCodeBuildQueue } from '../providers/aws-codebuild';
