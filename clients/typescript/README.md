@@ -10,6 +10,7 @@ import { createForgeClient } from '@lowerdeck/forge-client';
 let forge = createForgeClient({
   endpoint: '...'
 });
+```
 
 ## License
 
