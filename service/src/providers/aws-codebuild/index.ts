@@ -58,10 +58,12 @@ let startBuildQueueProcessor = startAwsCodeBuildQueue.process(async data => {
   let actionSteps = steps.filter(s => s.type === 'action');
   let cleanupSteps = steps.filter(s => s.type === 'cleanup');
 
-  let envVars: Record<string, string> = await encryption.decrypt({
-    entityId: ctx.run.id,
-    encrypted: ctx.run.encryptedEnvironmentVariables
-  });
+  let envVars: Record<string, string> = JSON.parse(
+    await encryption.decrypt({
+      entityId: ctx.run.id,
+      encrypted: ctx.run.encryptedEnvironmentVariables
+    })
+  );
 
   let artifactData: Record<string, { bucket: string; storageKey: string }> = {};
 
