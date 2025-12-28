@@ -167,7 +167,7 @@ class workflowRunServiceImpl {
   }
 
   private presentOutput(lines: string | string[]) {
-    let array = Array.isArray(lines) ? lines : lines.split('\n');
+    let array = (Array.isArray(lines) ? lines : lines.split('\n')).filter(Boolean);
 
     return array.map(line => {
       let [ts, message] = JSON.parse(line);
