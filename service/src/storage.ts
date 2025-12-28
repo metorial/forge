@@ -9,7 +9,7 @@ let initBuckets = async () => {
   await storage.upsertBucket(env.storage.ARTIFACT_BUCKET_NAME);
 };
 
-async () => {
+(async () => {
   while (true) {
     try {
       await initBuckets();
@@ -20,4 +20,4 @@ async () => {
 
     await delay(5000);
   }
-};
+})();
