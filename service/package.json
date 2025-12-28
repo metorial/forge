@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "start": "bun ./src/server.ts",
-    "dev": "docker compose -f ./docker-compose.dev.yml up --pull always --build forge object-storage"
+    "dev": "docker compose -p forge -f ./docker-compose.dev.yml up --pull always --build forge object-storage"
   },
   "devDependencies": {
     "@types/bun": "latest"

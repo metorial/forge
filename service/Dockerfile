@@ -29,6 +29,7 @@ RUN bun install --frozen-lockfile
 
 # Copy Prisma schema
 COPY prisma ./prisma
+COPY prisma.config.ts ./prisma.config.ts
 
 # Generate Prisma client
 RUN bun prisma generate
@@ -50,6 +51,7 @@ COPY --from=builder /app/prisma/generated ./prisma/generated
 
 # Copy Prisma schema (needed for db push)
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
 # Copy source code
 COPY --from=builder /app/src ./src
@@ -57,10 +59,10 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 # Create non-root user for security
-RUN groupadd -r forge && useradd -r -g forge forge && \
-    chown -R forge:forge /app
+RUN groupadd -r metorial && useradd -r -g metorial metorial && \
+    chown -R metorial:metorial /app
 
-USER forge
+USER metorial
 
 # Expose port
 EXPOSE 52020
