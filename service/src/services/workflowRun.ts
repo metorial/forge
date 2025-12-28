@@ -166,6 +166,19 @@ class workflowRunServiceImpl {
     );
   }
 
+  private presentOutput(lines: string | string[]) {
+    let array = Array.isArray(lines) ? lines : lines.split('\n');
+
+    return array.map(line => {
+      let [ts, message] = JSON.parse(line);
+
+      return {
+        timestamp: ts,
+        message
+      };
+    });
+  }
+
   async getWorkflowRunOutput(d: { run: WorkflowRun }) {
     let steps = await db.workflowRunStep.findMany({
       where: { runOid: d.run.oid },
@@ -179,7 +192,7 @@ class workflowRunServiceImpl {
           let output = await storage.getObject(step.outputBucket, step.outputStorageKey);
           return {
             step,
-            output: output.data.toString('utf-8'),
+            logs: this.presentOutput(output.data.toString('utf-8')),
             source: 'storage' as const
           };
         }
@@ -191,7 +204,7 @@ class workflowRunServiceImpl {
 
         return {
           step,
-          output: tempOutputs.map(o => o.output).join('\n'),
+          logs: this.presentOutput(tempOutputs.map(o => o.output)),
           source: 'temp' as const
         };
       })
@@ -212,7 +225,7 @@ class workflowRunServiceImpl {
     if (step.outputBucket && step.outputStorageKey) {
       let output = await storage.getObject(step.outputBucket, step.outputStorageKey);
       return {
-        output: output.data.toString('utf-8'),
+        logs: this.presentOutput(output.data.toString('utf-8')),
         source: 'storage' as const
       };
     }
@@ -223,7 +236,7 @@ class workflowRunServiceImpl {
     });
 
     return {
-      output: tempOutputs.map(o => o.output).join('\n'),
+      logs: this.presentOutput(tempOutputs.map(o => o.output)),
       source: 'temp' as const
     };
   }
