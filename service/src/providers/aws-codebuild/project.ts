@@ -10,7 +10,8 @@ import { env } from '../../env';
 import { codebuild, logsClient } from './codeBuild';
 import { ensureCodeBuildRole } from './role';
 
-let ProjectName = env.codeBuild.CODE_BUILD_PROJECT_NAME || 'metorial-forge-codebuild-role-v1';
+let ProjectName =
+  env.codeBuild.CODE_BUILD_PROJECT_NAME || 'metorial-forge-codebuild-project-v1';
 
 export let ensureProject = once(async () => {
   if (!codebuild || !logsClient) throw new Error('CodeBuild client not initialized');
