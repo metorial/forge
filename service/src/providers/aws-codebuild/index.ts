@@ -332,6 +332,7 @@ let monitorBuildOutputQueue = createQueue<{
       storageKey: string;
     }
   >;
+  afterCheckNo?: number;
 }>({
   redisUrl: env.service.REDIS_URL,
   name: 'forge/aws-cbld/mopt'
@@ -359,7 +360,7 @@ let monitorBuildOutputQueueProcessor = monitorBuildOutputQueue.process(async dat
   );
 
   let buildStarted = !!data.buildStarted;
-  let buildEnded = !!data.buildEnded;
+  let buildEndedNaturally = !!data.buildEnded;
 
   let currentStepOid = data.currentStepOid;
 
@@ -383,8 +384,7 @@ let monitorBuildOutputQueueProcessor = monitorBuildOutputQueue.process(async dat
 
         buildStarted = true;
       } else if (systemLog.type === 'build.end') {
-        buildEnded = true;
-        await buildEndedQueue.add({ runId: data.runId, buildId: data.buildId });
+        buildEndedNaturally = true;
       } else if (systemLog.type === 'step.start') {
         let step = await db.workflowRunStep.update({
           where: { id: systemLog.stepId, runOid: data.runOid },
@@ -422,7 +422,7 @@ let monitorBuildOutputQueueProcessor = monitorBuildOutputQueue.process(async dat
           });
         }
       }
-    } else if (buildStarted && !buildEnded && currentStepOid) {
+    } else if (buildStarted && !buildEndedNaturally && currentStepOid) {
       let string = collectedMessages.get(currentStepOid) || '';
       string += JSON.stringify([event.timestamp || 0, message]) + '\n';
       collectedMessages.set(currentStepOid, string);
@@ -443,17 +443,32 @@ let monitorBuildOutputQueueProcessor = monitorBuildOutputQueue.process(async dat
     });
   }
 
-  if (logResp.nextForwardToken && build.buildStatus == 'IN_PROGRESS') {
+  let finalAfterCheckNo = data.afterCheckNo !== undefined && data.afterCheckNo >= 5;
+
+  // Build ended as we expected or we've waited long enough after it ended
+  if (buildEndedNaturally || finalAfterCheckNo) {
+    await buildEndedQueue.add({ runId: data.runId, buildId: data.buildId });
+    return;
+  }
+
+  let buildEndedUnexpectedly = build.buildStatus != 'IN_PROGRESS';
+  let afterCheckNo = buildEndedUnexpectedly ? (data.afterCheckNo || 0) + 1 : undefined;
+
+  if (logResp.nextForwardToken) {
     await monitorBuildOutputQueue.add(
       {
         ...data,
         nextToken: logResp.nextForwardToken,
-        buildEnded,
+        buildEnded: buildEndedNaturally,
         buildStarted,
-        currentStepOid
+        currentStepOid,
+        afterCheckNo
       },
       { delay: 1000 }
     );
+  } else {
+    // If we don't have a new token, we can end the build
+    await buildEndedQueue.add({ runId: data.runId, buildId: data.buildId });
   }
 });
 
@@ -478,6 +493,10 @@ let buildEndedQueueProcessor = buildEndedQueue.process(async data => {
   await db.workflowRunStep.updateMany({
     where: { runOid: ctx.run.oid, status: 'running' },
     data: { status: 'failed', endedAt: new Date() }
+  });
+  await db.workflowRunStep.updateMany({
+    where: { runOid: ctx.run.oid, status: 'pending' },
+    data: { status: 'canceled' }
   });
 
   let hasFailedSteps = (await db.workflowRunStep.findFirst({

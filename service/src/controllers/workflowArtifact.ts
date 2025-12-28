@@ -43,7 +43,8 @@ export let workflowArtifactController = app.controller({
     .input(
       v.object({
         instanceId: v.string(),
-        workflowId: v.string()
+        workflowId: v.string(),
+        workflowArtifactId: v.string()
       })
     )
     .do(async ctx => workflowArtifactPresenter(ctx.artifact))

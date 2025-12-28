@@ -201,12 +201,20 @@ enum WorkflowRunStepType {
   cleanup
 }
 
+enum WorkflowRunStepStatus {
+  pending
+  running
+  succeeded
+  failed
+  canceled
+}
+
 model WorkflowRunStep {
   oid BigInt @id
   id  String @unique
 
   type   WorkflowRunStepType
-  status WorkflowRunStatus
+  status WorkflowRunStepStatus
 
   name  String
   index Int
