@@ -25,6 +25,7 @@
     "@lowerdeck/error": "^1.0.8",
     "@lowerdeck/hash": "^1.0.4",
     "@lowerdeck/id": "^1.0.5",
+    "@lowerdeck/lock": "^1.0.3",
     "@lowerdeck/once": "^1.0.4",
     "@lowerdeck/pagination": "^1.0.4",
     "@lowerdeck/queue": "^1.0.4",
