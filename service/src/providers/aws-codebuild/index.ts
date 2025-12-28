@@ -73,7 +73,6 @@ let startBuildQueueProcessor = startAwsCodeBuildQueue.process(async data => {
       environmentVariablesOverride: [
         ...Object.entries({
           ...envVars,
-
           WORKFLOW_RUN_ID: ctx.run.id,
           WORKFLOW_VERSION_ID: version.id,
           RUNTIME: 'metorial-forge@1.0.0'
@@ -492,19 +491,16 @@ let buildEndedQueueProcessor = buildEndedQueue.process(async data => {
 
   let ctx = await BuildContext.of(data.runId);
 
+  let failed = build.buildStatus != 'SUCCEEDED';
+
   await db.workflowRunStep.updateMany({
     where: { runOid: ctx.run.oid, status: 'running' },
-    data: { status: 'failed', endedAt: new Date() }
+    data: { status: failed ? 'failed' : 'succeeded', endedAt: new Date() }
   });
   await db.workflowRunStep.updateMany({
     where: { runOid: ctx.run.oid, status: 'pending' },
     data: { status: 'canceled' }
   });
-
-  let hasFailedSteps = (await db.workflowRunStep.findFirst({
-    where: { runOid: ctx.run.oid, status: 'failed' }
-  }))!!;
-  let failed = hasFailedSteps || build.buildStatus != 'SUCCEEDED';
 
   await db.workflowRun.updateMany({
     where: { id: data.runId },

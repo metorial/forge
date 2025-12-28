@@ -38,7 +38,7 @@ class workflowVersionServiceImpl {
       steps: WorkflowVersionSteps[];
     };
   }) {
-    let identifier = generatePlainId(6);
+    let identifier = generatePlainId(12);
 
     return await db.$transaction(async db => {
       let version = await db.workflowVersion.create({
