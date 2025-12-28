@@ -2,11 +2,7 @@ import { GetLogEventsCommand } from '@aws-sdk/client-cloudwatch-logs';
 import { BatchGetBuildsCommand, StartBuildCommand } from '@aws-sdk/client-codebuild';
 import { combineQueueProcessors, createQueue } from '@lowerdeck/queue';
 import { stringify } from 'yaml';
-import { db } from '../../db';
-import { encryption } from '../../encryption';
 import { env } from '../../env';
-import { snowflake } from '../../id';
-import { workflowArtifactService } from '../../services';
 import { storage } from '../../storage';
 import { BuildContext } from '../_lib/buildContext';
 import { codebuild, logsClient } from './codeBuild';
@@ -30,7 +26,7 @@ let parseSystemLog = (line: string) => {
 
 export let startAwsCodeBuildQueue = createQueue<{ runId: string }>({
   redisUrl: env.service.REDIS_URL,
-  name: 'forge/aws-cbld/start',
+  name: 'frg/aws.cb/bld/start',
   workerOpts: {
     concurrency: 5,
     limiter: {
@@ -58,14 +54,9 @@ let startBuildQueueProcessor = startAwsCodeBuildQueue.process(async data => {
   let actionSteps = steps.filter(s => s.type === 'action');
   let cleanupSteps = steps.filter(s => s.type === 'cleanup');
 
-  let envVars: Record<string, string> = JSON.parse(
-    await encryption.decrypt({
-      entityId: ctx.run.id,
-      encrypted: ctx.run.encryptedEnvironmentVariables
-    })
-  );
-
   let artifactData: Record<string, { bucket: string; storageKey: string }> = {};
+
+  let envVars = await ctx.DANGEROUSLY_getDecryptedEnvVars();
 
   let startBuildResp = await codebuild.send(
     new StartBuildCommand({
@@ -143,12 +134,9 @@ let startBuildQueueProcessor = startAwsCodeBuildQueue.process(async data => {
                     if (step.step?.type == 'script') {
                       inner = step.step?.actionScript ?? ['echo "No action"'];
                     } else if (step.step?.type == 'download_artifact') {
-                      let artifact = await db.workflowArtifact.findFirstOrThrow({
-                        where: {
-                          oid: step.step.artifactToDownloadOid!,
-                          workflowOid: ctx.run.workflowOid
-                        }
-                      });
+                      let artifact = step.step.artifactToDownload;
+                      if (!artifact) throw new Error('WTF - Artifact to download not found');
+
                       let res = await storage.getPublicURL(
                         artifact.bucket,
                         artifact.storageKey,
@@ -162,11 +150,7 @@ let startBuildQueueProcessor = startAwsCodeBuildQueue.process(async data => {
                         `echo "Download complete."`
                       ];
                     } else if (step.step?.type == 'upload_artifact') {
-                      let uploadInfo =
-                        await workflowArtifactService.putArtifactFromBuilderStart({
-                          run: ctx.run,
-                          expirationSecs: 60 * 60 * 6
-                        });
+                      let uploadInfo = await ctx.getArtifactUploadInfo();
 
                       artifactData[step.id] = {
                         bucket: uploadInfo.bucket,
@@ -225,16 +209,10 @@ let waitForBuildQueue = createQueue<{
   buildId: string;
   attemptNo: number;
 
-  artifactData: Record<
-    string,
-    {
-      bucket: string;
-      storageKey: string;
-    }
-  >;
+  artifactData: Record<string, { bucket: string; storageKey: string }>;
 }>({
   redisUrl: env.service.REDIS_URL,
-  name: 'forge/aws-cbld/wait'
+  name: 'frg/aws.cb/bld/wait'
 });
 
 let waitForBuildQueueProcessor = waitForBuildQueue.process(async data => {
@@ -283,16 +261,10 @@ let startedBuildQueue = createQueue<{
   buildId: string;
   cloudwatch: { groupName: string; streamName: string };
 
-  artifactData: Record<
-    string,
-    {
-      bucket: string;
-      storageKey: string;
-    }
-  >;
+  artifactData: Record<string, { bucket: string; storageKey: string }>;
 }>({
   redisUrl: env.service.REDIS_URL,
-  name: 'forge/aws-cbld/started'
+  name: 'frg/aws.cb/bld/started'
 });
 
 let startedBuildQueueProcessor = startedBuildQueue.process(async data => {
@@ -326,21 +298,17 @@ let monitorBuildOutputQueue = createQueue<{
 
   currentStepOid?: bigint;
 
-  artifactData: Record<
-    string,
-    {
-      bucket: string;
-      storageKey: string;
-    }
-  >;
+  artifactData: Record<string, { bucket: string; storageKey: string }>;
   afterCheckNo?: number;
 }>({
   redisUrl: env.service.REDIS_URL,
-  name: 'forge/aws-cbld/mopt'
+  name: 'frg/aws.cb/bld/mopt'
 });
 
 let monitorBuildOutputQueueProcessor = monitorBuildOutputQueue.process(async data => {
   if (!logsClient || !codebuild) throw new Error('CodeBuild client not initialized');
+
+  let ctx = await BuildContext.of(data.runId);
 
   let buildInfo = await codebuild.send(
     new BatchGetBuildsCommand({
@@ -356,18 +324,17 @@ let monitorBuildOutputQueueProcessor = monitorBuildOutputQueue.process(async dat
       logStreamName: data.cloudwatch.streamName,
 
       nextToken: data.nextToken,
-      startFromHead: true
+      startFromHead: true,
+      limit: 1000
     })
   );
 
-  let buildStarted = !!data.buildStarted;
-  let buildEndedNaturally = !!data.buildEnded;
-
-  let currentStepOid = data.currentStepOid;
-
   let collectedMessages = new Map<bigint, string>();
 
-  for (let event of logResp.events || []) {
+  let events = logResp.events || [];
+  let hasManyEvents = events.length >= 500;
+
+  for (let event of events) {
     let message = (event.message || '').trim();
     if (message.startsWith('[Container]')) continue;
 
@@ -375,84 +342,65 @@ let monitorBuildOutputQueueProcessor = monitorBuildOutputQueue.process(async dat
 
     if (systemLog) {
       if (systemLog.type === 'build.start') {
-        await db.workflowRun.update({
-          where: { id: data.runId },
-          data: {
-            status: 'running',
-            startedAt: build.startTime ? new Date(build.startTime) : new Date()
-          }
+        await ctx.startRun({
+          startedAt: event.timestamp ? new Date(event.timestamp) : new Date()
         });
-
-        buildStarted = true;
+        data.buildStarted = true;
       } else if (systemLog.type === 'build.end') {
-        buildEndedNaturally = true;
+        data.buildEnded = true;
       } else if (systemLog.type === 'step.start') {
-        let step = await db.workflowRunStep.update({
-          where: { id: systemLog.stepId, runOid: data.runOid },
-          data: {
-            status: 'running',
-            startedAt: event.timestamp ? new Date(event.timestamp) : new Date()
-          }
+        let step = await ctx.startStep({
+          stepId: systemLog.stepId,
+          startedAt: event.timestamp ? new Date(event.timestamp) : new Date()
         });
-        currentStepOid = step.oid;
+        data.currentStepOid = step.oid;
       } else if (systemLog.type === 'step.end') {
-        let step = await db.workflowRunStep.update({
-          where: { id: systemLog.stepId, runOid: data.runOid },
-          data: {
-            status: 'succeeded',
-            endedAt: event.timestamp ? new Date(event.timestamp) : new Date()
-          }
+        let step = await ctx.completeStep({
+          stepId: systemLog.stepId,
+          status: 'succeeded',
+          endedAt: event.timestamp ? new Date(event.timestamp) : new Date()
         });
-        if (currentStepOid === step.oid) currentStepOid = undefined;
+        if (data.currentStepOid === step.oid) data.currentStepOid = undefined;
       } else if (systemLog.type === 'upload-artifact.register') {
-        let step = await db.workflowRunStep.findFirst({
-          where: {
-            id: systemLog.stepId,
-            runOid: data.runOid
-          },
-          include: { step: true, run: true }
-        });
+        let step = await ctx.getStepById(systemLog.stepId);
         let artifactData = step ? data.artifactData[step.id] : null;
 
-        if (artifactData && step?.step?.type === 'upload_artifact') {
-          await workflowArtifactService.putArtifactFromBuilderFinish({
-            run: step.run,
-            name: step.step.artifactToUploadName!,
-            type: 'output',
+        if (artifactData && step) {
+          await ctx.completeArtifactUpload({
+            step,
             artifactData
           });
         }
       }
-    } else if (buildStarted && !buildEndedNaturally && currentStepOid) {
-      let string = collectedMessages.get(currentStepOid) || '';
+    } else if (data.buildStarted && !data.buildEnded && data.currentStepOid) {
+      let string = collectedMessages.get(data.currentStepOid) || '';
       string += JSON.stringify([event.timestamp || 0, message]) + '\n';
-      collectedMessages.set(currentStepOid, string);
+      collectedMessages.set(data.currentStepOid, string);
     }
   }
 
   for (let [stepOid, msg] of collectedMessages.entries()) {
-    let step = await db.workflowRunStep.findFirstOrThrow({
-      where: { oid: stepOid, runOid: data.runOid }
-    });
-    await db.workflowRunOutputTemp.create({
-      data: {
-        oid: snowflake.nextId(),
-        runOid: data.runOid,
-        stepOid: step.oid,
-        output: msg.trim()
-      }
+    await ctx.storeTempOutput({
+      stepOid,
+      message: msg
     });
   }
 
   let finalAfterCheckNo = data.afterCheckNo !== undefined && data.afterCheckNo >= 5;
 
   // Build ended as we expected or we've waited long enough after it ended
-  if (buildEndedNaturally || finalAfterCheckNo) {
-    await buildEndedQueue.add({ runId: data.runId, buildId: data.buildId });
+  if (data.buildEnded || finalAfterCheckNo) {
+    await buildEndedQueue.add({
+      runId: data.runId,
+      buildId: data.buildId,
+      artifactData: data.artifactData
+    });
     return;
   }
 
   let buildEndedUnexpectedly = build.buildStatus != 'IN_PROGRESS';
+  data.buildEnded = data.buildEnded || buildEndedUnexpectedly;
+
   let afterCheckNo = buildEndedUnexpectedly ? (data.afterCheckNo || 0) + 1 : undefined;
 
   if (logResp.nextForwardToken) {
@@ -460,22 +408,26 @@ let monitorBuildOutputQueueProcessor = monitorBuildOutputQueue.process(async dat
       {
         ...data,
         nextToken: logResp.nextForwardToken,
-        buildEnded: buildEndedNaturally,
-        buildStarted,
-        currentStepOid,
         afterCheckNo
       },
-      { delay: 1000 }
+      { delay: hasManyEvents ? 50 : 1000 }
     );
   } else {
     // If we don't have a new token, we can end the build
-    await buildEndedQueue.add({ runId: data.runId, buildId: data.buildId });
+    await buildEndedQueue.add(
+      { runId: data.runId, buildId: data.buildId, artifactData: data.artifactData },
+      { delay: 5000 }
+    );
   }
 });
 
-let buildEndedQueue = createQueue<{ runId: string; buildId: string }>({
+let buildEndedQueue = createQueue<{
+  runId: string;
+  buildId: string;
+  artifactData: Record<string, { bucket: string; storageKey: string }>;
+}>({
   redisUrl: env.service.REDIS_URL,
-  name: 'forge/aws-cbld/end'
+  name: 'frg/aws.cb/bld/end'
 });
 
 let buildEndedQueueProcessor = buildEndedQueue.process(async data => {
@@ -489,81 +441,19 @@ let buildEndedQueueProcessor = buildEndedQueue.process(async data => {
   let build = buildInfo.builds?.[0];
   if (!build) return;
 
-  let ctx = await BuildContext.of(data.runId);
-
-  let failed = build.buildStatus != 'SUCCEEDED';
-
-  await db.workflowRunStep.updateMany({
-    where: { runOid: ctx.run.oid, status: 'running' },
-    data: { status: failed ? 'failed' : 'succeeded', endedAt: new Date() }
-  });
-  await db.workflowRunStep.updateMany({
-    where: { runOid: ctx.run.oid, status: 'pending' },
-    data: { status: 'canceled' }
-  });
-
-  await db.workflowRun.updateMany({
-    where: { id: data.runId },
-    data: {
-      status: failed ? 'failed' : 'succeeded',
-      endedAt: build.endTime ? new Date(build.endTime) : new Date()
-    }
-  });
-
-  await storeOutputQueue.add({ runId: data.runId });
-});
-
-let storeOutputQueue = createQueue<{ runId: string }>({
-  redisUrl: env.service.REDIS_URL,
-  name: 'forge/aws-cbld/storou'
-});
-
-let storeOutputQueueProcessor = storeOutputQueue.process(async data => {
-  let run = await db.workflowRun.findFirst({ where: { id: data.runId } });
-  if (!run) return;
-
-  let steps = await db.workflowRunStep.findMany({
-    where: { runOid: run.oid }
-  });
-
-  for (let step of steps) {
-    let outputs = await db.workflowRunOutputTemp.findMany({
-      where: { stepOid: step.oid },
-      orderBy: { createdAt: 'asc' }
-    });
-
-    let fullOutput = outputs.map(o => o.output).join('\n');
-
-    let outputBucket = env.storage.LOG_BUCKET_NAME;
-    let outputStorageKey = `runs/${run.id}/log/${step.id}`;
-
-    await storage.putObject(outputBucket, outputStorageKey, fullOutput);
-
-    await db.workflowRunStep.updateMany({
-      where: { oid: step.oid },
-      data: {
-        outputBucket,
-        outputStorageKey
-      }
-    });
+  if (build.buildStatus != 'FAILED' && build.buildStatus != 'SUCCEEDED') {
+    await buildEndedQueue.add(data, { delay: 3000 });
+    return;
   }
 
-  await storeOutputCleanupQueue.add({ runOid: run.oid }, { delay: 10000 });
-});
+  let ctx = await BuildContext.of(data.runId);
 
-let storeOutputCleanupQueue = createQueue<{ runOid: bigint }>({
-  redisUrl: env.service.REDIS_URL,
-  name: 'forge/aws-cbld/stoclu'
-});
-
-let storeOutputCleanupQueueProcessor = storeOutputCleanupQueue.process(async data => {
-  await db.workflowRunOutputTemp.deleteMany({
-    where: { runOid: data.runOid }
-  });
-
-  await db.workflowRun.updateMany({
-    where: { oid: data.runOid },
-    data: { encryptedEnvironmentVariables: '' }
+  await ctx.completeBuild({
+    status: build.buildStatus == 'FAILED' ? 'failed' : 'succeeded',
+    stepArtifacts: Object.entries(data.artifactData).map(([stepId, info]) => ({
+      stepId,
+      ...info
+    }))
   });
 });
 
@@ -572,7 +462,5 @@ export let awsCodeBuildProcessors = combineQueueProcessors([
   waitForBuildQueueProcessor,
   startedBuildQueueProcessor,
   monitorBuildOutputQueueProcessor,
-  buildEndedQueueProcessor,
-  storeOutputQueueProcessor,
-  storeOutputCleanupQueueProcessor
+  buildEndedQueueProcessor
 ]);
