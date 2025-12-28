@@ -88,7 +88,8 @@ export let workflowVersionController = app.controller({
     .input(
       v.object({
         instanceId: v.string(),
-        workflowId: v.string()
+        workflowId: v.string(),
+        workflowVersionId: v.string()
       })
     )
     .do(async ctx => workflowVersionPresenter(ctx.version))
