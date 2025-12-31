@@ -169,14 +169,17 @@ class workflowRunServiceImpl {
   private presentOutput(lines: string | string[]) {
     let array = (Array.isArray(lines) ? lines : lines.split('\n')).filter(Boolean);
 
-    return array.map(line => {
-      let [ts, message] = JSON.parse(line);
+    return array
+      .map(line => {
+        if (!line.startsWith('[')) return undefined!;
+        let [ts, message] = JSON.parse(line);
 
-      return {
-        timestamp: ts,
-        message
-      };
-    });
+        return {
+          timestamp: ts,
+          message
+        };
+      })
+      .filter(Boolean);
   }
 
   async getWorkflowRunOutput(d: { run: WorkflowRun }) {
