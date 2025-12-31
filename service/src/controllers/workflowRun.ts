@@ -22,7 +22,7 @@ export let workflowRunController = app.controller({
     .handler()
     .input(
       v.object({
-        instanceId: v.string(),
+        tenantId: v.string(),
         workflowId: v.string(),
 
         env: v.record(v.string()),
@@ -54,7 +54,7 @@ export let workflowRunController = app.controller({
       Paginator.validate(
         v.object({
           workflowId: v.string(),
-          instanceId: v.string()
+          tenantId: v.string()
         })
       )
     )
@@ -72,7 +72,7 @@ export let workflowRunController = app.controller({
     .handler()
     .input(
       v.object({
-        instanceId: v.string(),
+        tenantId: v.string(),
         workflowId: v.string(),
         workflowRunId: v.string()
       })
@@ -83,7 +83,7 @@ export let workflowRunController = app.controller({
     .handler()
     .input(
       v.object({
-        instanceId: v.string(),
+        tenantId: v.string(),
         workflowId: v.string(),
         workflowRunId: v.string()
       })
@@ -101,7 +101,7 @@ export let workflowRunController = app.controller({
     .handler()
     .input(
       v.object({
-        instanceId: v.string(),
+        tenantId: v.string(),
         workflowId: v.string(),
         workflowRunId: v.string(),
         workflowRunStepId: v.string()

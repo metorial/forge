@@ -23,7 +23,7 @@ export let workflowArtifactController = app.controller({
     .input(
       Paginator.validate(
         v.object({
-          instanceId: v.string(),
+          tenantId: v.string(),
           workflowId: v.string()
         })
       )
@@ -42,7 +42,7 @@ export let workflowArtifactController = app.controller({
     .handler()
     .input(
       v.object({
-        instanceId: v.string(),
+        tenantId: v.string(),
         workflowId: v.string(),
         workflowArtifactId: v.string()
       })

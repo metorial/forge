@@ -10,7 +10,7 @@ Forge is a build orchestration service that wraps different cloud build provider
 - **Log Management**: Centralized log collection and retrieval for all build runs
 - **Environment Variables**: Encrypted environment variable storage and injection
 - **Build Versioning**: Track and manage different versions of your workflows
-- **Instance Isolation**: Multi-tenant support with instance-based resource isolation
+- **Tenant Isolation**: Multi-tenant architecture for isolated projects
 
 ## Quick Start
 
@@ -152,20 +152,20 @@ let client = createForgeClient({
 
 ### Core API Examples
 
-#### 1. Instance Management
+#### 1. Tenant Management
 
-Instances represent isolated tenants or projects:
+Tenants represent isolated tenants or projects:
 
 ```typescript
-// Create/update an instance
-let instance = await client.instance.upsert({
+// Create/update an tenant
+let tenant = await client.tenant.upsert({
   name: 'My Project',
   identifier: 'my-project',
 });
 
-// Get an instance
-let retrievedInstance = await client.instance.get({
-  instanceId: instance.id,
+// Get an tenant
+let retrievedTenant = await client.tenant.get({
+  tenantId: tenant.id,
 });
 ```
 
@@ -176,34 +176,34 @@ Workflows define build processes:
 ```typescript
 // Create/update a workflow
 let workflow = await client.workflow.upsert({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   name: 'Build and Test',
   identifier: 'build-test',
 });
 
 // List workflows
 let workflows = await client.workflow.list({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   limit: 10,
   order: 'desc',
 });
 
 // Get a specific workflow
 let workflowDetails = await client.workflow.get({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   workflowId: workflow.id,
 });
 
 // Update a workflow
 let updated = await client.workflow.update({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   workflowId: workflow.id,
   name: 'Build, Test, and Deploy',
 });
 
 // Delete a workflow
 await client.workflow.delete({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   workflowId: workflow.id,
 });
 ```
@@ -215,7 +215,7 @@ Versions allow you to define the actual build steps:
 ```typescript
 // Create a workflow version with steps
 let version = await client.workflowVersion.create({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   workflowId: workflow.id,
   name: 'v1.0.0',
   steps: [
@@ -242,14 +242,14 @@ let version = await client.workflowVersion.create({
 
 // List versions
 let versions = await client.workflowVersion.list({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   workflowId: workflow.id,
   limit: 10,
 });
 
 // Get version details
 let versionDetails = await client.workflowVersion.get({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   workflowId: workflow.id,
 });
 ```
@@ -261,7 +261,7 @@ Execute workflows with environment variables and files:
 ```typescript
 // Create a workflow run
 let run = await client.workflowRun.create({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   workflowId: workflow.id,
   env: {
     NODE_ENV: 'production',
@@ -287,7 +287,7 @@ console.log('Steps:', run.steps);
 
 // List workflow runs
 let runs = await client.workflowRun.list({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   workflowId: workflow.id,
   limit: 20,
   order: 'desc',
@@ -295,7 +295,7 @@ let runs = await client.workflowRun.list({
 
 // Get detailed run information
 let runDetails = await client.workflowRun.get({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   workflowId: workflow.id,
   workflowRunId: run.id,
 });
@@ -312,7 +312,7 @@ Retrieve build logs for workflow runs:
 ```typescript
 // Get all step outputs for a run
 let outputs = await client.workflowRun.getOutput({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   workflowId: workflow.id,
   workflowRunId: run.id,
 });
@@ -326,7 +326,7 @@ for (let output of outputs) {
 
 // Get output for a specific step
 let stepOutput = await client.workflowRun.getOutputForStep({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   workflowId: workflow.id,
   workflowRunId: run.id,
   workflowRunStepId: run.steps[0].id,
@@ -342,7 +342,7 @@ Access build artifacts generated during workflow runs:
 ```typescript
 // List artifacts for a workflow
 let artifacts = await client.workflowArtifact.list({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   workflowId: workflow.id,
   limit: 10,
 });
@@ -355,7 +355,7 @@ for (let artifact of artifacts.items) {
 
 // Get a specific artifact
 let artifact = await client.workflowArtifact.get({
-  instanceId: instance.id,
+  tenantId: tenant.id,
   workflowId: workflow.id,
 });
 
