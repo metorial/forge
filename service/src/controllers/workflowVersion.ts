@@ -22,7 +22,7 @@ export let workflowVersionController = app.controller({
     .handler()
     .input(
       v.object({
-        instanceId: v.string(),
+        tenantId: v.string(),
         workflowId: v.string(),
 
         name: v.string(),
@@ -69,7 +69,7 @@ export let workflowVersionController = app.controller({
       Paginator.validate(
         v.object({
           workflowId: v.string(),
-          instanceId: v.string()
+          tenantId: v.string()
         })
       )
     )
@@ -87,7 +87,7 @@ export let workflowVersionController = app.controller({
     .handler()
     .input(
       v.object({
-        instanceId: v.string(),
+        tenantId: v.string(),
         workflowId: v.string(),
         workflowVersionId: v.string()
       })

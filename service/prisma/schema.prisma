@@ -13,7 +13,7 @@ datasource db {
   provider = "postgresql"
 }
 
-model Instance {
+model Tenant {
   oid BigInt @id
   id  String @unique
 
@@ -52,8 +52,8 @@ model Workflow {
   identifier String
   name       String
 
-  instanceOid BigInt
-  instance    Instance @relation(fields: [instanceOid], references: [oid])
+  tenantOid BigInt
+  tenant    Tenant @relation(fields: [tenantOid], references: [oid])
 
   providerOid BigInt
   provider    Provider @relation(fields: [providerOid], references: [oid])
@@ -69,7 +69,7 @@ model Workflow {
   artifacts WorkflowArtifact[]
   runs      WorkflowRun[]
 
-  @@unique([instanceOid, identifier])
+  @@unique([tenantOid, identifier])
 }
 
 model WorkflowVersion {

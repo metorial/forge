@@ -3,26 +3,26 @@ import { v } from '@lowerdeck/validation';
 import { workflowPresenter } from '../presenters/workflow';
 import { workflowService } from '../services';
 import { app } from './_app';
-import { instanceApp } from './instance';
+import { tenantApp } from './tenant';
 
-export let workflowApp = instanceApp.use(async ctx => {
+export let workflowApp = tenantApp.use(async ctx => {
   let workflowId = ctx.body.workflowId;
   if (!workflowId) throw new Error('Workflow ID is required');
 
   let workflow = await workflowService.getWorkflowById({
     id: workflowId,
-    instance: ctx.instance
+    tenant: ctx.tenant
   });
 
   return { workflow };
 });
 
 export let workflowController = app.controller({
-  upsert: instanceApp
+  upsert: tenantApp
     .handler()
     .input(
       v.object({
-        instanceId: v.string(),
+        tenantId: v.string(),
 
         name: v.string(),
         identifier: v.string()
@@ -30,7 +30,7 @@ export let workflowController = app.controller({
     )
     .do(async ctx => {
       let workflow = await workflowService.upsertWorkflow({
-        instance: ctx.instance,
+        tenant: ctx.tenant,
         input: {
           name: ctx.input.name,
           identifier: ctx.input.identifier
@@ -39,18 +39,18 @@ export let workflowController = app.controller({
       return workflowPresenter(workflow);
     }),
 
-  list: instanceApp
+  list: tenantApp
     .handler()
     .input(
       Paginator.validate(
         v.object({
-          instanceId: v.string()
+          tenantId: v.string()
         })
       )
     )
     .do(async ctx => {
       let paginator = await workflowService.listWorkflows({
-        instance: ctx.instance
+        tenant: ctx.tenant
       });
 
       let list = await paginator.run(ctx.input);
@@ -62,7 +62,7 @@ export let workflowController = app.controller({
     .handler()
     .input(
       v.object({
-        instanceId: v.string(),
+        tenantId: v.string(),
         workflowId: v.string()
       })
     )
@@ -72,7 +72,7 @@ export let workflowController = app.controller({
     .handler()
     .input(
       v.object({
-        instanceId: v.string(),
+        tenantId: v.string(),
         workflowId: v.string()
       })
     )
@@ -88,7 +88,7 @@ export let workflowController = app.controller({
     .handler()
     .input(
       v.object({
-        instanceId: v.string(),
+        tenantId: v.string(),
         workflowId: v.string(),
 
         name: v.optional(v.string())
