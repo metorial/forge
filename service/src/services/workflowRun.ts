@@ -171,6 +171,7 @@ class workflowRunServiceImpl {
 
     return array
       .map(line => {
+        console.log('LINE:', line);
         if (!line.startsWith('[')) return undefined!;
         let [ts, message] = JSON.parse(line);
 
