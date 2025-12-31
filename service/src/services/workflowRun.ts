@@ -171,7 +171,6 @@ class workflowRunServiceImpl {
 
     return array
       .map(line => {
-        console.log('LINE:', line);
         if (!line.startsWith('[')) return undefined!;
         let [ts, message] = JSON.parse(line);
 
@@ -208,7 +207,7 @@ class workflowRunServiceImpl {
 
         return {
           step,
-          logs: this.presentOutput(tempOutputs.map(o => o.output)),
+          logs: this.presentOutput(tempOutputs.flatMap(o => o.output.split('\n'))),
           source: 'temp' as const
         };
       })
