@@ -23,7 +23,7 @@ export let workflowRunPresenter = async (
     artifacts: WorkflowArtifact[];
   }
 ) => ({
-  object: 'workflow.run',
+  object: 'forgeworkflow.run',
 
   id: run.id,
   status: run.status,
@@ -58,7 +58,7 @@ export let workflowRunStepPresenter = (
       | null;
   }
 ) => ({
-  object: 'workflow.run.step',
+  object: 'forgeworkflow.run.step',
 
   id: step.id,
 

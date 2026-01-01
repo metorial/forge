@@ -4,7 +4,7 @@ import { storage } from '../storage';
 export let workflowArtifactPresenter = async (
   artifact: WorkflowArtifact & { run: WorkflowRun; workflow: Workflow }
 ) => ({
-  object: 'workflow.artifact',
+  object: 'forgeworkflow.artifact',
 
   id: artifact.id,
 

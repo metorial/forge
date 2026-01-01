@@ -13,7 +13,7 @@ export let workflowVersionPresenter = (
     workflow: Workflow;
   }
 ) => ({
-  object: 'workflow.version',
+  object: 'forgeworkflow.version',
 
   id: version.id,
   identifier: version.identifier,
@@ -31,7 +31,7 @@ export let workflowVersionStepPresenter = (
     artifactToDownload: WorkflowArtifact | null;
   }
 ) => ({
-  object: 'workflow.version.step',
+  object: 'forgeworkflow.version.step',
 
   id: step.id,
   type: step.type,
