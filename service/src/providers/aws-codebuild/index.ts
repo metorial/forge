@@ -207,11 +207,13 @@ let startBuildQueueProcessor = startAwsCodeBuildQueue.process(async data => {
       artifactData
     });
   } catch (err: any) {
+    let message = err?.message ?? err?.toString?.() ?? '';
+
     if (
-      err.message.include('Concurrent build limit') ||
-      err.message.includes('Throttling') ||
-      err.message.includes('Rate exceeded') ||
-      err.message.includes('LimitExceeded')
+      message.include('Concurrent build limit') ||
+      message.includes('Throttling') ||
+      message.includes('Rate exceeded') ||
+      message.includes('LimitExceeded')
     ) {
       await startAwsCodeBuildQueue.add(data, { delay: 30_000 });
       return;
