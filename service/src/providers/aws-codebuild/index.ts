@@ -58,150 +58,167 @@ let startBuildQueueProcessor = startAwsCodeBuildQueue.process(async data => {
 
   let envVars = await ctx.DANGEROUSLY_getDecryptedEnvVars();
 
-  let startBuildResp = await codebuild.send(
-    new StartBuildCommand({
-      projectName: project.projectName,
-      environmentVariablesOverride: [
-        ...Object.entries({
-          ...envVars,
-          WORKFLOW_RUN_ID: ctx.run.id,
-          WORKFLOW_VERSION_ID: version.id,
-          RUNTIME: 'metorial-forge@1.0.0'
-        }).map(([k, v]) => ({
-          name: k,
-          value: v,
-          type: 'PLAINTEXT' as const
-        }))
-      ],
+  try {
+    let startBuildResp = await codebuild.send(
+      new StartBuildCommand({
+        projectName: project.projectName,
+        environmentVariablesOverride: [
+          ...Object.entries({
+            ...envVars,
+            WORKFLOW_RUN_ID: ctx.run.id,
+            WORKFLOW_VERSION_ID: version.id,
+            RUNTIME: 'metorial-forge@1.0.0'
+          }).map(([k, v]) => ({
+            name: k,
+            value: v,
+            type: 'PLAINTEXT' as const
+          }))
+        ],
 
-      buildspecOverride: stringify({
-        version: '0.2',
-        phases: {
-          build: {
-            commands: [
-              logSystem({ type: 'build.start' }),
+        buildspecOverride: stringify({
+          version: '0.2',
+          phases: {
+            build: {
+              commands: [
+                logSystem({ type: 'build.start' }),
 
-              logSystem({ type: 'step.start', stepId: setupStep.id }),
+                logSystem({ type: 'step.start', stepId: setupStep.id }),
 
-              'echo "Started build on Metorial Forge (runner: AWS/1) ..."',
-              'echo "Setting up build environment ..."',
+                'echo "Started build on Metorial Forge (runner: AWS/1) ..."',
+                'echo "Setting up build environment ..."',
 
-              'apt-get update && apt-get install -y zip unzip curl',
+                'apt-get update && apt-get install -y zip unzip curl',
 
-              'mkdir -p ./forge',
-              'cd ./forge',
-              'mkdir -p ./output',
+                'mkdir -p ./forge',
+                'cd ./forge',
+                'mkdir -p ./output',
 
-              logSystem({ type: 'download-artifacts.start' }),
-              `echo "Downloading initial files ..."`,
+                logSystem({ type: 'download-artifacts.start' }),
+                `echo "Downloading initial files ..."`,
 
-              ...(
-                await Promise.all(
-                  artifacts.map(async artifact => {
-                    let res = await storage.getPublicURL(
-                      artifact.bucket,
-                      artifact.storageKey,
-                      60 * 60 * 6
-                    );
-
-                    return [
-                      logSystem({ type: 'download-artifact.start', artifactId: artifact.id }),
-                      `curl -sL ${shellEscape(res.url)} -o /tmp/artifact_${artifact.oid}.zip`,
-                      `unzip -o /tmp/artifact_${artifact.oid}.zip -d ./`,
-                      `rm /tmp/artifact_${artifact.oid}.zip`,
-                      logSystem({ type: 'download-artifact.end', artifactId: artifact.id })
-                    ];
-                  })
-                )
-              ).flat(),
-
-              logSystem({ type: 'download-artifacts.end' }),
-
-              'echo "Build environment setup complete."',
-              logSystem({ type: 'step.end', stepId: setupStep.id }),
-
-              ...initSteps.flatMap(step => [
-                logSystem({ type: 'step.start', stepId: step.id }),
-                ...(step.step?.initScript ?? ['echo "No action"']),
-                logSystem({ type: 'step.end', stepId: step.id })
-              ]),
-
-              ...(
-                await Promise.all(
-                  actionSteps.flatMap(async step => {
-                    let inner: string[] = [];
-
-                    if (step.step?.type == 'script') {
-                      inner = step.step?.actionScript ?? ['echo "No action"'];
-                    } else if (step.step?.type == 'download_artifact') {
-                      let artifact = step.step.artifactToDownload;
-                      if (!artifact) throw new Error('WTF - Artifact to download not found');
-
+                ...(
+                  await Promise.all(
+                    artifacts.map(async artifact => {
                       let res = await storage.getPublicURL(
                         artifact.bucket,
                         artifact.storageKey,
                         60 * 60 * 6
                       );
 
-                      inner = [
-                        `echo "Downloading artifact ${artifact.name} ..."`,
-                        `curl -sL ${shellEscape(res.url)} -o /tmp/artifact_${artifact.oid}`,
-                        `mv /tmp/artifact_${artifact.oid} ${shellEscape(step.step.artifactToDownloadPath!)}`,
-                        `echo "Download complete."`
-                      ];
-                    } else if (step.step?.type == 'upload_artifact') {
-                      let uploadInfo = await ctx.getArtifactUploadInfo();
-
-                      artifactData[step.id] = {
-                        bucket: uploadInfo.bucket,
-                        storageKey: uploadInfo.storageKey
-                      };
-
-                      inner = [
-                        `echo "Uploading artifact ${step.step.artifactToUploadName!} from ${step.step.artifactToUploadPath!} ..."`,
-                        `curl -X PUT ${shellEscape(uploadInfo.uploadUrl)} -H "Content-Type: application/octet-stream" --data-binary @${shellEscape(step.step.artifactToUploadPath!)} `,
-                        `echo "Upload complete."`,
+                      return [
                         logSystem({
-                          type: 'upload-artifact.register',
-                          stepId: step.id
-                        })
+                          type: 'download-artifact.start',
+                          artifactId: artifact.id
+                        }),
+                        `curl -sL ${shellEscape(res.url)} -o /tmp/artifact_${artifact.oid}.zip`,
+                        `unzip -o /tmp/artifact_${artifact.oid}.zip -d ./`,
+                        `rm /tmp/artifact_${artifact.oid}.zip`,
+                        logSystem({ type: 'download-artifact.end', artifactId: artifact.id })
                       ];
-                    }
+                    })
+                  )
+                ).flat(),
 
-                    return [
-                      logSystem({ type: 'step.start', stepId: step.id }),
-                      ...inner,
-                      logSystem({ type: 'step.end', stepId: step.id })
-                    ];
-                  })
-                )
-              ).flat(),
+                logSystem({ type: 'download-artifacts.end' }),
 
-              ...cleanupSteps.flatMap(step => [
-                logSystem({ type: 'step.start', stepId: step.id }),
-                ...(step.step?.cleanupScript ?? ['echo "No action"']),
-                logSystem({ type: 'step.end', stepId: step.id })
-              ]),
+                'echo "Build environment setup complete."',
+                logSystem({ type: 'step.end', stepId: setupStep.id }),
 
-              logSystem({ type: 'step.start', stepId: teardownStep.id }),
-              'echo "Tearing down build environment ..."',
-              'echo "Build complete ... powered by Metorial Forge (AWS/1)."',
-              logSystem({ type: 'step.end', stepId: teardownStep.id }),
+                ...initSteps.flatMap(step => [
+                  logSystem({ type: 'step.start', stepId: step.id }),
+                  ...(step.step?.initScript ?? ['echo "No action"']),
+                  logSystem({ type: 'step.end', stepId: step.id })
+                ]),
 
-              logSystem({ type: 'build.end' })
-            ]
+                ...(
+                  await Promise.all(
+                    actionSteps.flatMap(async step => {
+                      let inner: string[] = [];
+
+                      if (step.step?.type == 'script') {
+                        inner = step.step?.actionScript ?? ['echo "No action"'];
+                      } else if (step.step?.type == 'download_artifact') {
+                        let artifact = step.step.artifactToDownload;
+                        if (!artifact) throw new Error('WTF - Artifact to download not found');
+
+                        let res = await storage.getPublicURL(
+                          artifact.bucket,
+                          artifact.storageKey,
+                          60 * 60 * 6
+                        );
+
+                        inner = [
+                          `echo "Downloading artifact ${artifact.name} ..."`,
+                          `curl -sL ${shellEscape(res.url)} -o /tmp/artifact_${artifact.oid}`,
+                          `mv /tmp/artifact_${artifact.oid} ${shellEscape(step.step.artifactToDownloadPath!)}`,
+                          `echo "Download complete."`
+                        ];
+                      } else if (step.step?.type == 'upload_artifact') {
+                        let uploadInfo = await ctx.getArtifactUploadInfo();
+
+                        artifactData[step.id] = {
+                          bucket: uploadInfo.bucket,
+                          storageKey: uploadInfo.storageKey
+                        };
+
+                        inner = [
+                          `echo "Uploading artifact ${step.step.artifactToUploadName!} from ${step.step.artifactToUploadPath!} ..."`,
+                          `curl -X PUT ${shellEscape(uploadInfo.uploadUrl)} -H "Content-Type: application/octet-stream" --data-binary @${shellEscape(step.step.artifactToUploadPath!)} `,
+                          `echo "Upload complete."`,
+                          logSystem({
+                            type: 'upload-artifact.register',
+                            stepId: step.id
+                          })
+                        ];
+                      }
+
+                      return [
+                        logSystem({ type: 'step.start', stepId: step.id }),
+                        ...inner,
+                        logSystem({ type: 'step.end', stepId: step.id })
+                      ];
+                    })
+                  )
+                ).flat(),
+
+                ...cleanupSteps.flatMap(step => [
+                  logSystem({ type: 'step.start', stepId: step.id }),
+                  ...(step.step?.cleanupScript ?? ['echo "No action"']),
+                  logSystem({ type: 'step.end', stepId: step.id })
+                ]),
+
+                logSystem({ type: 'step.start', stepId: teardownStep.id }),
+                'echo "Tearing down build environment ..."',
+                'echo "Build complete ... powered by Metorial Forge (AWS/1)."',
+                logSystem({ type: 'step.end', stepId: teardownStep.id }),
+
+                logSystem({ type: 'build.end' })
+              ]
+            }
           }
-        }
+        })
       })
-    })
-  );
+    );
 
-  await waitForBuildQueue.add({
-    runId: ctx.run.id,
-    buildId: startBuildResp.build?.id!,
-    attemptNo: 1,
-    artifactData
-  });
+    await waitForBuildQueue.add({
+      runId: ctx.run.id,
+      buildId: startBuildResp.build?.id!,
+      attemptNo: 1,
+      artifactData
+    });
+  } catch (err: any) {
+    if (
+      err.message.include('Concurrent build limit') ||
+      err.message.includes('Throttling') ||
+      err.message.includes('Rate exceeded') ||
+      err.message.includes('LimitExceeded')
+    ) {
+      await startAwsCodeBuildQueue.add(data, { delay: 30_000 });
+      return;
+    }
+
+    throw err;
+  }
 });
 
 let waitForBuildQueue = createQueue<{
