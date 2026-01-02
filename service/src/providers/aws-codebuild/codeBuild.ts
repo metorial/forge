@@ -13,7 +13,9 @@ export let codebuild =
                 accessKeyId: env.codeBuild.CODE_BUILD_AWS_ACCESS_KEY_ID,
                 secretAccessKey: env.codeBuild.CODE_BUILD_AWS_SECRET_ACCESS_KEY
               }
-            : undefined
+            : undefined,
+
+        maxAttempts: 25
       })
     : undefined;
 

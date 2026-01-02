@@ -231,7 +231,8 @@ let waitForBuildQueue = createQueue<{
   artifactData: Record<string, { bucket: string; storageKey: string }>;
 }>({
   redisUrl: env.service.REDIS_URL,
-  name: 'frg/aws.cb/bld/wait'
+  name: 'frg/aws.cb/bld/wait',
+  workerOpts: { concurrency: 5 }
 });
 
 let waitForBuildQueueProcessor = waitForBuildQueue.process(async data => {
@@ -270,7 +271,7 @@ let waitForBuildQueueProcessor = waitForBuildQueue.process(async data => {
         ...data,
         attemptNo: data.attemptNo + 1
       },
-      { delay: data.attemptNo < 10 ? 1000 : 5000 }
+      { delay: data.attemptNo < 10 ? 2500 : 5000 }
     );
   }
 });
@@ -283,7 +284,8 @@ let startedBuildQueue = createQueue<{
   artifactData: Record<string, { bucket: string; storageKey: string }>;
 }>({
   redisUrl: env.service.REDIS_URL,
-  name: 'frg/aws.cb/bld/started'
+  name: 'frg/aws.cb/bld/started',
+  workerOpts: { concurrency: 5 }
 });
 
 let startedBuildQueueProcessor = startedBuildQueue.process(async data => {
@@ -321,7 +323,8 @@ let monitorBuildOutputQueue = createQueue<{
   afterCheckNo?: number;
 }>({
   redisUrl: env.service.REDIS_URL,
-  name: 'frg/aws.cb/bld/mopt'
+  name: 'frg/aws.cb/bld/mopt',
+  workerOpts: { concurrency: 5 }
 });
 
 let monitorBuildOutputQueueProcessor = monitorBuildOutputQueue.process(async data => {
@@ -429,7 +432,7 @@ let monitorBuildOutputQueueProcessor = monitorBuildOutputQueue.process(async dat
         nextToken: logResp.nextForwardToken,
         afterCheckNo
       },
-      { delay: hasManyEvents ? 50 : 1000 }
+      { delay: hasManyEvents ? 500 : 2500 }
     );
   } else {
     // If we don't have a new token, we can end the build
@@ -446,7 +449,8 @@ let buildEndedQueue = createQueue<{
   artifactData: Record<string, { bucket: string; storageKey: string }>;
 }>({
   redisUrl: env.service.REDIS_URL,
-  name: 'frg/aws.cb/bld/end'
+  name: 'frg/aws.cb/bld/end',
+  workerOpts: { concurrency: 5 }
 });
 
 let buildEndedQueueProcessor = buildEndedQueue.process(async data => {
