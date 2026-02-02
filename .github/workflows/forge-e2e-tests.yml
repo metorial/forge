@@ -27,6 +27,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Sync Bun lockfile for service build
+        run: cp bun.lock service/bun.lock
+
       - name: Start Docker services
         env:
           RUN_ID: ${{ github.run_id }}
