@@ -1,5 +1,6 @@
 import { createClient } from '@lowerdeck/rpc-client';
-import { ClientOpts } from '@lowerdeck/rpc-client/dist/shared/clientBuilder';
 import type { ForgeClient } from '../../../service/src/controllers';
+
+type ClientOpts = Parameters<typeof createClient>[0];
 
 export let createForgeClient = (o: ClientOpts) => createClient<ForgeClient>(o);
