@@ -1,12 +1,26 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { times } from 'lodash';
 import { WorkflowStatus } from '../../../prisma/generated/client';
 import { testDb, cleanDatabase } from '../../test/setup';
 import { fixtures } from '../../test/fixtures';
 import { forgeClient } from '../../test/client';
-import { setupTestMocks } from '../../test/mocks';
 
-setupTestMocks();
+vi.mock('../../providers/aws-codebuild', () => ({
+  startAwsCodeBuildQueue: { add: vi.fn().mockResolvedValue({ id: 'test-job' }) }
+}));
+
+vi.mock('../../storage', () => ({
+  storage: {
+    putObject: vi.fn().mockResolvedValue({ storageKey: 'test-key' }),
+    getObject: vi.fn().mockResolvedValue({ data: Buffer.from('') }),
+    getPublicURL: vi.fn().mockResolvedValue({ url: 'http://example.com/artifact' }),
+    upsertBucket: vi.fn().mockResolvedValue(undefined)
+  }
+}));
+
+vi.mock('../../queues/deleteWorkflow', () => ({
+  deleteWorkflowQueue: { add: vi.fn().mockResolvedValue({ id: 'test-job' }) }
+}));
 
 describe('workflow:upsert E2E', () => {
   const f = fixtures(testDb);
