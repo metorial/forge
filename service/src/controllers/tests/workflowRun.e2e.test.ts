@@ -1,22 +1,12 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { times } from 'lodash';
 import { WorkflowRunStatus, WorkflowRunStepType } from '../../../prisma/generated/client';
 import { testDb, cleanDatabase } from '../../test/setup';
 import { fixtures } from '../../test/fixtures';
 import { forgeClient } from '../../test/client';
+import { setupTestMocks } from '../../test/mocks';
 
-vi.mock('../../providers/aws-codebuild', () => ({
-  startAwsCodeBuildQueue: { add: vi.fn().mockResolvedValue({ id: 'test-job' }) }
-}));
-
-vi.mock('../../storage', () => ({
-  storage: {
-    putObject: vi.fn().mockResolvedValue({ storageKey: 'test-key' }),
-    getObject: vi.fn().mockResolvedValue({ data: Buffer.from('') }),
-    getPublicURL: vi.fn().mockResolvedValue({ url: 'http://example.com/artifact' }),
-    upsertBucket: vi.fn().mockResolvedValue(undefined)
-  }
-}));
+setupTestMocks();
 
 describe('workflowRun:create E2E', () => {
   const f = fixtures(testDb);
@@ -54,6 +44,19 @@ describe('workflowRun:create E2E', () => {
     const stepTypes = result.steps.map(s => s.type);
     expect(stepTypes).toContain(WorkflowRunStepType.setup);
     expect(stepTypes).toContain(WorkflowRunStepType.teardown);
+  });
+
+  it('rejects creating run for workflow without active version', async () => {
+    const workflow = await f.workflow.withTenant();
+
+    await expect(
+      forgeClient.workflowRun.create({
+        tenantId: workflow.tenant.id,
+        workflowId: workflow.id,
+        env: { NODE_ENV: 'production' },
+        files: []
+      })
+    ).rejects.toThrow();
   });
 });
 

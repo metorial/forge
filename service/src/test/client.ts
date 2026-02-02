@@ -1,19 +1,9 @@
-import { createForgeClient } from '../../../clients/typescript/src/index';
+import { createClient } from '@lowerdeck/rpc-client';
 import { createFetchRouter } from '@lowerdeck/testing-tools';
 import { forgeApi } from '../controllers';
+import type { ForgeClient } from '../controllers';
 
-type ClientOptsLike = {
-  endpoint: string;
-  headers?: Record<string, string | undefined>;
-  getHeaders?: () => Promise<Record<string, string>> | Record<string, string>;
-  onRequest?: (d: {
-    endpoint: string;
-    name: string;
-    payload: any;
-    headers: Record<string, string | undefined>;
-    query?: Record<string, string | undefined>;
-  }) => any;
-};
+type ClientOptsLike = Parameters<typeof createClient>[0];
 
 const fetchRouter = createFetchRouter();
 const registerInMemoryRoute = (endpoint: string) => {
@@ -27,7 +17,7 @@ export const createTestForgeClient = (opts: Partial<ClientOptsLike> = {}) => {
   registerInMemoryRoute(endpoint);
   fetchRouter.install();
 
-  return createForgeClient({
+  return createClient<ForgeClient>({
     ...opts,
     endpoint
   } as ClientOptsLike);

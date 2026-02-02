@@ -1,26 +1,12 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { times } from 'lodash';
 import { WorkflowStatus } from '../../../prisma/generated/client';
 import { testDb, cleanDatabase } from '../../test/setup';
 import { fixtures } from '../../test/fixtures';
 import { forgeClient } from '../../test/client';
+import { setupTestMocks } from '../../test/mocks';
 
-vi.mock('../../providers/aws-codebuild', () => ({
-  startAwsCodeBuildQueue: { add: vi.fn().mockResolvedValue({ id: 'test-job' }) }
-}));
-
-vi.mock('../../storage', () => ({
-  storage: {
-    putObject: vi.fn().mockResolvedValue({ storageKey: 'test-key' }),
-    getObject: vi.fn().mockResolvedValue({ data: Buffer.from('') }),
-    getPublicURL: vi.fn().mockResolvedValue({ url: 'http://example.com/artifact' }),
-    upsertBucket: vi.fn().mockResolvedValue(undefined)
-  }
-}));
-
-vi.mock('../../queues/deleteWorkflow', () => ({
-  deleteWorkflowQueue: { add: vi.fn().mockResolvedValue({ id: 'test-job' }) }
-}));
+setupTestMocks();
 
 describe('workflow:upsert E2E', () => {
   const f = fixtures(testDb);
@@ -138,6 +124,18 @@ describe('workflow:get E2E', () => {
       status: WorkflowStatus.active
     });
   });
+
+  it('cannot access workflow from different tenant', async () => {
+    const workflow = await f.workflow.withTenant();
+    const otherTenant = await f.tenant.default({ identifier: 'other-tenant' });
+
+    await expect(
+      forgeClient.workflow.get({
+        tenantId: otherTenant.id,
+        workflowId: workflow.id
+      })
+    ).rejects.toThrow();
+  });
 });
 
 describe('workflow:update E2E', () => {
@@ -161,6 +159,19 @@ describe('workflow:update E2E', () => {
       name: 'Updated Workflow Name'
     });
   });
+
+  it('cannot update workflow from different tenant', async () => {
+    const workflow = await f.workflow.withTenant();
+    const otherTenant = await f.tenant.default({ identifier: 'other-tenant' });
+
+    await expect(
+      forgeClient.workflow.update({
+        tenantId: otherTenant.id,
+        workflowId: workflow.id,
+        name: 'Hacked Name'
+      })
+    ).rejects.toThrow();
+  });
 });
 
 describe('workflow:delete E2E', () => {
@@ -182,5 +193,17 @@ describe('workflow:delete E2E', () => {
       id: workflow.id,
       status: WorkflowStatus.active // Status change happens async via queue
     });
+  });
+
+  it('cannot delete workflow from different tenant', async () => {
+    const workflow = await f.workflow.withTenant();
+    const otherTenant = await f.tenant.default({ identifier: 'other-tenant' });
+
+    await expect(
+      forgeClient.workflow.delete({
+        tenantId: otherTenant.id,
+        workflowId: workflow.id
+      })
+    ).rejects.toThrow();
   });
 });
