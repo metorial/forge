@@ -11,7 +11,8 @@ let identifier = await Hash.sha256(
   })
 );
 
-let currentProvider = db.provider.upsert({
+// Export the resolved provider so tests can reference its oid/id
+export let defaultProvider = await db.provider.upsert({
   where: { identifier },
   update: { name: env.provider.DEFAULT_PROVIDER },
   create: {
@@ -24,7 +25,7 @@ let currentProvider = db.provider.upsert({
 
 class providerServiceImpl {
   async getDefaultProvider() {
-    return await currentProvider;
+    return defaultProvider;
   }
 }
 
