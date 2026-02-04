@@ -20,88 +20,16 @@ on:
 jobs:
   e2e-tests:
     name: Run Forge E2E Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Sync Bun lockfile for service build
-        run: cp bun.lock service/bun.lock
-
-      - name: Start Docker services
-        env:
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          cd service
-          docker compose -p forge-ci-$RUN_ID -f docker-compose.dev.yml --env-file .env.ci --profile infra --profile service up -d --build
-
-      - name: Wait for services to be ready
-        env:
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          cd service
-          echo "Waiting for all services to be ready..."
-          services=(
-            forge-postgres
-            forge-redis
-            forge-object-storage
-            forge-service
-          )
-          for i in {1..60}; do
-            all_ready=true
-            for service in "${services[@]}"; do
-              status=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$service" 2>/dev/null || echo "missing")
-              if [ "$status" != "healthy" ] && [ "$status" != "running" ]; then
-                all_ready=false
-                break
-              fi
-            done
-            if [ "$all_ready" = true ]; then
-              break
-            fi
-            sleep 5
-          done
-          if [ "$all_ready" != true ]; then
-            echo "Timed out waiting for services to be ready."
-            docker compose -p forge-ci-$RUN_ID -f docker-compose.dev.yml --env-file .env.ci ps
-            echo "=== Unready Service Logs ==="
-            for service in "${services[@]}"; do
-              status=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$service" 2>/dev/null || echo "missing")
-              if [ "$status" != "healthy" ] && [ "$status" != "running" ]; then
-                echo "--- $service ($status) ---"
-                docker logs "$service" --tail=200 || true
-              fi
-            done
-            exit 1
-          fi
-          echo "Services are ready!"
-          docker compose -p forge-ci-$RUN_ID -f docker-compose.dev.yml --env-file .env.ci ps
-
-      - name: Run E2E tests
-        run: |
-          docker exec forge-service sh -c "cd /app && bun run test -- --mode ci --reporter verbose"
-
-      - name: Collect logs on failure
-        if: failure()
-        env:
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          cd service
-          echo "=== Docker Compose Logs ==="
-          docker compose -p forge-ci-$RUN_ID -f docker-compose.dev.yml --env-file .env.ci logs --tail=100
-
-          echo "=== Service Container Logs ==="
-          docker logs forge-service --tail=200
-
-          echo "=== Service Status ==="
-          docker compose -p forge-ci-$RUN_ID -f docker-compose.dev.yml --env-file .env.ci ps
-
-      - name: Cleanup
-        if: always()
-        env:
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          cd service
-          docker compose -p forge-ci-$RUN_ID -f docker-compose.dev.yml --env-file .env.ci down -v
+    uses: metorial/.github/.github/workflows/reusable-e2e-tests.yml@main
+    with:
+      service_directory: service
+      compose_project_prefix: forge-ci
+      compose_profiles: 'infra service'
+      wait_services: |
+        forge-postgres
+        forge-redis
+        forge-object-storage
+        forge-service
+      test_container: forge-service
+      test_command: cd /app && bun run test -- --mode ci --reporter verbose
+      pre_start_command: cp bun.lock service/bun.lock
