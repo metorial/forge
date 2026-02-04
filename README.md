@@ -22,7 +22,7 @@ Pull and run the latest image from GitHub Container Registry:
 docker pull ghcr.io/metorial/forge:latest
 
 docker run -d \
-  -p 52020:52020 \
+  -p 55020:52020 \
   -e DATABASE_URL=postgresql://user:pass@host:5432/forge \
   -e REDIS_URL=redis://host:6379/0 \
   -e ENCRYPTION_KEY=your-32-char-encryption-key \
@@ -60,7 +60,7 @@ services:
   object-storage:
     image: ghcr.io/metorial/object-storage:latest
     ports:
-      - "52010:52010"
+      - "55010:52010"
     volumes:
       - object-store-data:/app/data
     environment:
@@ -74,7 +74,7 @@ services:
   forge:
     image: ghcr.io/metorial/forge:latest
     ports:
-      - "52020:52020"
+      - "55020:52020"
     environment:
       DATABASE_URL: postgresql://forge:forge@postgres:5432/forge
       REDIS_URL: redis://redis:6379/0
@@ -128,7 +128,7 @@ Start the services:
 docker-compose up -d
 ```
 
-The Forge service will be available at `http://localhost:52020`
+The Forge service will be available at `http://localhost:55020`
 
 ## TypeScript Client
 
@@ -146,7 +146,7 @@ bun add @metorial-services/forge-client
 import { createForgeClient } from '@metorial-services/forge-client';
 
 let client = createForgeClient({
-  endpoint: 'http://localhost:52020',
+  endpoint: 'http://localhost:55020',
 });
 ```
 
