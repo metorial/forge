@@ -1,5 +1,5 @@
 import { createIdGenerator, idType } from '@lowerdeck/id';
-import { Worker as SnowflakeId } from 'snowflake-uuid';
+import { Snowflake } from '@lowerdeck/snowflake';
 
 export let ID = createIdGenerator({
   tenant: idType.sorted('fins_'),
@@ -23,7 +23,7 @@ let workerId = (() => {
   return array[0]! & workerIdMask;
 })();
 
-export let snowflake = new SnowflakeId(workerId, 0, {
+export let snowflake = new Snowflake(workerId, 0, {
   workerIdBits: workerIdBits,
   datacenterIdBits: 0,
   sequenceBits: 9,
