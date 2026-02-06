@@ -23,9 +23,11 @@ let workerId = (() => {
   return array[0]! & workerIdMask;
 })();
 
-export let snowflake = new Snowflake(workerId, 0, {
+export let snowflake = new Snowflake({
+  workerId,
+  datacenterId: 0,
   workerIdBits: workerIdBits,
   datacenterIdBits: 0,
   sequenceBits: 9,
-  epoch: new Date('2025-06-01T00:00:00Z').getTime()
+  epoch: new Date('2025-06-01T00:00:00Z')
 });
