@@ -1,5 +1,3 @@
-import { checkCodeBuildAccess } from './providers/aws-codebuild/access';
-
 if (!process.env.DATABASE_URL) {
   if (
     !process.env.DATABASE_USERNAME ||
@@ -33,11 +31,4 @@ if (!process.env.REDIS_URL) {
   } catch {
     // If parsing fails, leave REDIS_URL as-is.
   }
-}
-
-if (
-  process.env.NODE_ENV == 'production' &&
-  process.env.DEFAULT_PROVIDER === 'aws.code-build'
-) {
-  await checkCodeBuildAccess();
 }
