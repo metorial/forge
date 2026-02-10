@@ -6,20 +6,14 @@ if (!process.env.DATABASE_URL) {
     !process.env.DATABASE_PORT ||
     !process.env.DATABASE_NAME
   ) {
-    throw new Error(
-      'DATABASE_URL is not set and database component env vars are missing'
-    );
+    throw new Error('DATABASE_URL is not set and database component env vars are missing');
   }
 
   process.env.DATABASE_URL = `postgres://${process.env.DATABASE_USERNAME}:${process.env.DATABASE_PASSWORD}@${process.env.DATABASE_HOST}:${process.env.DATABASE_PORT}/${process.env.DATABASE_NAME}?schema=public&sslmode=no-verify&connection_limit=20`;
 }
 
 if (!process.env.REDIS_URL) {
-  if (
-    !process.env.REDIS_AUTH_TOKEN ||
-    !process.env.REDIS_HOST ||
-    !process.env.REDIS_PORT
-  ) {
+  if (!process.env.REDIS_AUTH_TOKEN || !process.env.REDIS_HOST || !process.env.REDIS_PORT) {
     throw new Error('REDIS_URL is not set and redis component env vars are missing');
   }
 
@@ -39,7 +33,10 @@ if (!process.env.REDIS_URL) {
   }
 }
 
-if (process.env.DEFAULT_PROVIDER === 'aws.code-build') {
+if (
+  process.env.NODE_ENV == 'production' &&
+  process.env.DEFAULT_PROVIDER === 'aws.code-build'
+) {
   let { checkCodeBuildAccess } = await import('./providers/aws-codebuild/access');
   await checkCodeBuildAccess();
 }
