@@ -41,6 +41,8 @@ export let checkCodeBuildAccess = async () => {
         })
       );
 
+      console.log('Successfully verified CodeBuild access');
+
       return;
     } catch (err) {
       lastError = err;

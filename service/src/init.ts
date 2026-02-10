@@ -1,3 +1,5 @@
+import { checkCodeBuildAccess } from './providers/aws-codebuild/access';
+
 if (!process.env.DATABASE_URL) {
   if (
     !process.env.DATABASE_USERNAME ||
@@ -37,6 +39,5 @@ if (
   process.env.NODE_ENV == 'production' &&
   process.env.DEFAULT_PROVIDER === 'aws.code-build'
 ) {
-  let { checkCodeBuildAccess } = await import('./providers/aws-codebuild/access');
   await checkCodeBuildAccess();
 }
