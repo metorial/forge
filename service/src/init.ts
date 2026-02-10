@@ -38,3 +38,8 @@ if (!process.env.REDIS_URL) {
     // If parsing fails, leave REDIS_URL as-is.
   }
 }
+
+if (process.env.DEFAULT_PROVIDER === 'aws.code-build') {
+  let { checkCodeBuildAccess } = await import('./providers/aws-codebuild/access');
+  await checkCodeBuildAccess();
+}
