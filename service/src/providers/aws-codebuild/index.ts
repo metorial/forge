@@ -5,6 +5,7 @@ import { stringify } from 'yaml';
 import { env } from '../../env';
 import { storage } from '../../storage';
 import { BuildContext } from '../_lib/buildContext';
+import { checkCodeBuildAccess } from './access';
 import { codebuild, logsClient } from './codeBuild';
 import { ensureProject } from './project';
 
@@ -487,3 +488,10 @@ export let awsCodeBuildProcessors = combineQueueProcessors([
   monitorBuildOutputQueueProcessor,
   buildEndedQueueProcessor
 ]);
+
+if (
+  process.env.NODE_ENV == 'production' &&
+  process.env.DEFAULT_PROVIDER === 'aws.code-build'
+) {
+  await checkCodeBuildAccess();
+}
