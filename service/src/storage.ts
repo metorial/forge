@@ -16,6 +16,7 @@ let initBuckets = async () => {
       return;
     } catch (err) {
       console.error('Error initializing storage buckets, retrying...');
+      console.error(err);
     }
 
     await delay(5000);
