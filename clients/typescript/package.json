@@ -31,7 +31,7 @@
     "prepublish": "bun run build"
   },
   "dependencies": {
-    "@lowerdeck/rpc-client": "^1.0.2"
+    "@lowerdeck/rpc-client": "^1.1.0"
   },
   "devDependencies": {
     "dts-bundle-generator": "^9.5.1",
