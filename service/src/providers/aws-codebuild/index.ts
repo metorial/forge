@@ -31,7 +31,7 @@ export let startAwsCodeBuildQueue = createQueue<{ runId: string }>({
   workerOpts: {
     concurrency: 5,
     limiter: {
-      max: 25,
+      max: 1,
       duration: 1000
     }
   }
@@ -233,7 +233,13 @@ let waitForBuildQueue = createQueue<{
 }>({
   redisUrl: env.service.REDIS_URL,
   name: 'frg/aws.cb/bld/wait',
-  workerOpts: { concurrency: 5 }
+  workerOpts: {
+    concurrency: 5,
+    limiter: {
+      max: 10,
+      duration: 1000
+    }
+  }
 });
 
 let waitForBuildQueueProcessor = waitForBuildQueue.process(async data => {
@@ -286,7 +292,13 @@ let startedBuildQueue = createQueue<{
 }>({
   redisUrl: env.service.REDIS_URL,
   name: 'frg/aws.cb/bld/started',
-  workerOpts: { concurrency: 5 }
+  workerOpts: {
+    concurrency: 5,
+    limiter: {
+      max: 10,
+      duration: 1000
+    }
+  }
 });
 
 let startedBuildQueueProcessor = startedBuildQueue.process(async data => {
@@ -325,7 +337,13 @@ let monitorBuildOutputQueue = createQueue<{
 }>({
   redisUrl: env.service.REDIS_URL,
   name: 'frg/aws.cb/bld/mopt',
-  workerOpts: { concurrency: 5 }
+  workerOpts: {
+    concurrency: 5,
+    limiter: {
+      max: 10,
+      duration: 1000
+    }
+  }
 });
 
 let monitorBuildOutputQueueProcessor = monitorBuildOutputQueue.process(async data => {
@@ -451,7 +469,13 @@ let buildEndedQueue = createQueue<{
 }>({
   redisUrl: env.service.REDIS_URL,
   name: 'frg/aws.cb/bld/end',
-  workerOpts: { concurrency: 5 }
+  workerOpts: {
+    concurrency: 5,
+    limiter: {
+      max: 1,
+      duration: 1000
+    }
+  }
 });
 
 let buildEndedQueueProcessor = buildEndedQueue.process(async data => {
@@ -465,7 +489,9 @@ let buildEndedQueueProcessor = buildEndedQueue.process(async data => {
   let build = buildInfo.builds?.[0];
   if (!build) return;
 
-  if (build.buildStatus != 'FAILED' && build.buildStatus != 'SUCCEEDED') {
+  let terminalStatuses = ['FAILED', 'FAULT', 'STOPPED', 'SUCCEEDED', 'TIMED_OUT'] as const;
+
+  if (!build.buildStatus || !terminalStatuses.includes(build.buildStatus as any)) {
     await buildEndedQueue.add(data, { delay: 3000 });
     return;
   }
@@ -473,7 +499,7 @@ let buildEndedQueueProcessor = buildEndedQueue.process(async data => {
   let ctx = await BuildContext.of(data.runId);
 
   await ctx.completeBuild({
-    status: build.buildStatus == 'FAILED' ? 'failed' : 'succeeded',
+    status: build.buildStatus == 'SUCCEEDED' ? 'succeeded' : 'failed',
     stepArtifacts: Object.entries(data.artifactData).map(([stepId, info]) => ({
       stepId,
       ...info
