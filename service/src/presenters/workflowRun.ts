@@ -58,7 +58,7 @@ export let workflowRunStepPresenter = (
       | null;
   }
 ) => ({
-  object: 'forgeworkflow.run.step',
+  object: 'forge#workflow.run.step',
 
   id: step.id,
 

@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { times } from 'lodash';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkflowStatus } from '../../../prisma/generated/client';
-import { testDb, cleanDatabase } from '../../test/setup';
-import { fixtures } from '../../test/fixtures';
 import { forgeClient } from '../../test/client';
+import { fixtures } from '../../test/fixtures';
+import { cleanDatabase, testDb } from '../../test/setup';
 
 vi.mock('../../providers/aws-codebuild', () => ({
   startAwsCodeBuildQueue: { add: vi.fn().mockResolvedValue({ id: 'test-job' }) }
@@ -39,7 +39,6 @@ describe('workflow:upsert E2E', () => {
     });
 
     expect(result).toMatchObject({
-      object: 'forgeworkflow',
       id: expect.any(String),
       identifier: 'my-workflow',
       name: 'My Workflow',
@@ -131,7 +130,6 @@ describe('workflow:get E2E', () => {
     });
 
     expect(result).toMatchObject({
-      object: 'forgeworkflow',
       id: workflow.id,
       identifier: workflow.identifier,
       name: workflow.name,

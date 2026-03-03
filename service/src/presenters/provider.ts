@@ -1,7 +1,7 @@
 import type { Provider } from '../../prisma/generated/client';
 
 export let providerPresenter = (provider: Provider) => ({
-  object: 'forgeprovider',
+  object: 'forge#provider',
 
   id: provider.id,
   identifier: provider.identifier,

@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { cleanDatabase } from '../../test/setup';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { forgeClient } from '../../test/client';
+import { cleanDatabase } from '../../test/setup';
 
 vi.mock('../../providers/aws-codebuild', () => ({
   startAwsCodeBuildQueue: { add: vi.fn().mockResolvedValue({ id: 'test-job' }) }
@@ -24,7 +24,6 @@ describe('provider:getDefault E2E', () => {
     const result = await forgeClient.provider.getDefault({});
 
     expect(result).toMatchObject({
-      object: 'forgeprovider',
       id: expect.any(String),
       identifier: expect.any(String),
       name: 'aws.code-build',

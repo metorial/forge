@@ -1,7 +1,7 @@
 import type { Workflow } from '../../prisma/generated/client';
 
 export let workflowPresenter = (workflow: Workflow) => ({
-  object: 'forgeworkflow',
+  object: 'forge#workflow',
 
   id: workflow.id,
   status: workflow.status,

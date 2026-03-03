@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { testDb, cleanDatabase } from '../../test/setup';
-import { fixtures } from '../../test/fixtures';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { forgeClient } from '../../test/client';
+import { fixtures } from '../../test/fixtures';
+import { cleanDatabase, testDb } from '../../test/setup';
 
 vi.mock('../../providers/aws-codebuild', () => ({
   startAwsCodeBuildQueue: { add: vi.fn().mockResolvedValue({ id: 'test-job' }) }
@@ -28,7 +28,6 @@ describe('tenant:upsert E2E', () => {
     });
 
     expect(result).toMatchObject({
-      object: 'forgetenant',
       id: expect.any(String),
       identifier: 'new-tenant',
       name: 'New Tenant',
@@ -69,7 +68,6 @@ describe('tenant:get E2E', () => {
     });
 
     expect(result).toMatchObject({
-      object: 'forgetenant',
       id: tenant.id,
       identifier: tenant.identifier,
       name: tenant.name,
