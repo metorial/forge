@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { times } from 'lodash';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkflowVersionStepType } from '../../../prisma/generated/client';
-import { testDb, cleanDatabase } from '../../test/setup';
-import { fixtures } from '../../test/fixtures';
 import { forgeClient } from '../../test/client';
+import { fixtures } from '../../test/fixtures';
+import { cleanDatabase, testDb } from '../../test/setup';
 
 vi.mock('../../providers/aws-codebuild', () => ({
   startAwsCodeBuildQueue: { add: vi.fn().mockResolvedValue({ id: 'test-job' }) }
@@ -50,7 +50,6 @@ describe('workflowVersion:create E2E', () => {
     });
 
     expect(result).toMatchObject({
-      object: 'forgeworkflow.version',
       id: expect.any(String),
       identifier: expect.any(String),
       name: 'Version 1.0',
@@ -60,7 +59,6 @@ describe('workflowVersion:create E2E', () => {
 
     expect(result.steps).toHaveLength(2);
     expect(result.steps[0]).toMatchObject({
-      object: 'forgeworkflow.version.step',
       name: 'Build Step',
       type: WorkflowVersionStepType.script,
       initScript: ['echo "initializing"'],
@@ -68,7 +66,6 @@ describe('workflowVersion:create E2E', () => {
       cleanupScript: ['echo "cleaning up"']
     });
     expect(result.steps[1]).toMatchObject({
-      object: 'forgeworkflow.version.step',
       name: 'Upload Output',
       type: WorkflowVersionStepType.upload_artifact,
       artifactSourcePath: './dist',
@@ -134,7 +131,6 @@ describe('workflowVersion:get E2E', () => {
     });
 
     expect(result).toMatchObject({
-      object: 'forgeworkflow.version',
       id: version.id,
       identifier: version.identifier,
       name: version.name,

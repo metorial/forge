@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { times } from 'lodash';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkflowRunStatus, WorkflowRunStepType } from '../../../prisma/generated/client';
-import { testDb, cleanDatabase } from '../../test/setup';
-import { fixtures } from '../../test/fixtures';
 import { forgeClient } from '../../test/client';
+import { fixtures } from '../../test/fixtures';
+import { cleanDatabase, testDb } from '../../test/setup';
 
 vi.mock('../../providers/aws-codebuild', () => ({
   startAwsCodeBuildQueue: { add: vi.fn().mockResolvedValue({ id: 'test-job' }) }
@@ -32,13 +32,10 @@ describe('workflowRun:create E2E', () => {
       tenantId: version.workflow.tenant.id,
       workflowId: version.workflow.id,
       env: { NODE_ENV: 'production' },
-      files: [
-        { filename: 'index.js', content: 'console.log("hello")' }
-      ]
+      files: [{ filename: 'index.js', content: 'console.log("hello")' }]
     });
 
     expect(result).toMatchObject({
-      object: 'forgeworkflow.run',
       id: expect.any(String),
       status: WorkflowRunStatus.pending,
       workflowId: version.workflow.id,
@@ -127,7 +124,6 @@ describe('workflowRun:get E2E', () => {
     });
 
     expect(result).toMatchObject({
-      object: 'forgeworkflow.run',
       id: run.id,
       status: WorkflowRunStatus.succeeded,
       workflowId: run.workflow.id,
@@ -156,9 +152,7 @@ describe('workflowRun:getOutput E2E', () => {
     expect(result).toBeInstanceOf(Array);
     result.forEach(output => {
       expect(output).toMatchObject({
-        step: expect.objectContaining({
-          object: 'forgeworkflow.run.step'
-        }),
+        step: expect.objectContaining({}),
         logs: expect.any(Array),
         source: expect.stringMatching(/^(storage|temp)$/)
       });

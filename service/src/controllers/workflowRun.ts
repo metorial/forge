@@ -1,5 +1,5 @@
 import { Paginator } from '@lowerdeck/pagination';
-import { v } from '@lowerdeck/validation';
+import { createValidator, v, type ValidatorOptions } from '@lowerdeck/validation';
 import { workflowRunPresenter, workflowRunStepPresenter } from '../presenters';
 import { workflowRunService } from '../services';
 import { app } from './_app';
@@ -17,6 +17,36 @@ export let workflowRunApp = workflowApp.use(async ctx => {
   return { run };
 });
 
+let longString = createValidator<string, ValidatorOptions<string>>('string', (opts, value) => {
+  if (typeof value != 'string') {
+    return {
+      success: false,
+      errors: [
+        {
+          code: 'invalid_type',
+          message: opts.message ?? `Invalid input, expected string, received ${typeof value}`,
+          received: typeof value,
+          expected: 'string'
+        }
+      ]
+    };
+  }
+
+  if (value.length > 50_000_000) {
+    return {
+      success: false,
+      errors: [
+        {
+          code: 'max_length',
+          message: 'Input is too long'
+        }
+      ]
+    };
+  }
+
+  return { success: true, value };
+});
+
 export let workflowRunController = app.controller({
   create: workflowApp
     .handler()
@@ -30,7 +60,7 @@ export let workflowRunController = app.controller({
         files: v.array(
           v.object({
             filename: v.string(),
-            content: v.string(),
+            content: longString(),
             encoding: v.optional(v.enumOf(['utf-8', 'base64']))
           })
         )
