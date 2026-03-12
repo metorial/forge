@@ -169,10 +169,24 @@ class workflowRunServiceImpl {
   private presentOutput(lines: string | string[]) {
     let array = (Array.isArray(lines) ? lines : lines.split('\n')).filter(Boolean);
 
+    let hasFirstNonEmptyLine = false;
+    let prevLineEmpty = false;
+
     return array
-      .map(line => {
+      .map((line, i) => {
         if (!line.startsWith('[')) return undefined!;
         let [ts, message] = JSON.parse(line);
+
+        let isEmpty = !message.length;
+
+        if (!hasFirstNonEmptyLine && isEmpty) return undefined!;
+        hasFirstNonEmptyLine = true;
+
+        if (prevLineEmpty && isEmpty) return undefined!;
+        prevLineEmpty = isEmpty;
+
+        let isLastLine = i == array.length - 1;
+        if (isLastLine && isEmpty) return undefined!;
 
         return {
           timestamp: ts,
