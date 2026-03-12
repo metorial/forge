@@ -85,7 +85,7 @@ let startBuildQueueProcessor = startAwsCodeBuildQueue.process(async data => {
 
                 logSystem({ type: 'step.start', stepId: setupStep.id }),
 
-                'echo "Started build on Metorial Forge (runner: AWS/1) ..."',
+                'echo "Started build on Metorial Forge ..."',
                 'echo "Setting up build environment ..."',
 
                 'apt-get update && apt-get install -y zip unzip curl',
@@ -190,7 +190,7 @@ let startBuildQueueProcessor = startAwsCodeBuildQueue.process(async data => {
 
                 logSystem({ type: 'step.start', stepId: teardownStep.id }),
                 'echo "Tearing down build environment ..."',
-                'echo "Build complete ... powered by Metorial Forge (AWS/1)."',
+                'echo "Build complete ... powered by Metorial Forge."',
                 logSystem({ type: 'step.end', stepId: teardownStep.id }),
 
                 logSystem({ type: 'build.end' })
